@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAVEONE — Raqamli Himoya</title>
+<meta name="description" content="O'zbekistonda telefon firibgarligi va scam hujumlaridan AI yordamida real vaqtda himoya.">
+<link rel="stylesheet" href="style.css">
+<style>
+/* ── HERO ── */
+.hero {
+  min-height:100vh; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  text-align:center; padding:7rem 2rem 5rem;
+  position:relative; z-index:1;
+}
+.hero h1 { font-size:clamp(2.8rem,7vw,6rem); margin:1.5rem 0; letter-spacing:-0.03em; }
+.hero h1 .line2 {
+  display:block;
+  background:linear-gradient(135deg,var(--p3) 0%,var(--cyan) 50%,var(--p3) 100%);
+  background-size:200% auto;
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+  animation:shimmer 3s linear infinite;
+}
+.hero-sub { font-size:1.05rem; color:var(--muted); max-width:520px; line-height:1.85; margin-bottom:2.5rem; }
+.hero-btns { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:5rem; }
+
+/* STATS */
+.hero-stats { display:flex; gap:4rem; }
+.hstat .n {
+  font-family:'Syne',sans-serif; font-size:2rem; font-weight:800;
+  background:linear-gradient(135deg,var(--p1),var(--cyan));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.hstat .l { font-size:0.74rem; color:var(--muted); margin-top:4px; letter-spacing:0.08em; text-transform:uppercase; }
+
+/* FLOATING CARDS */
+.float-card {
+  position:absolute; padding:11px 16px;
+  display:flex; align-items:center; gap:10px;
+  border-radius:14px; font-size:0.8rem; font-weight:500;
+  animation:floatCard 7s ease-in-out infinite;
+  backdrop-filter:blur(20px);
+}
+.fc1 { top:22%; left:6%; animation-delay:0s; }
+.fc2 { top:28%; right:5%; animation-delay:-2.5s; }
+.fc3 { bottom:26%; left:8%; animation-delay:-5s; }
+@keyframes floatCard { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+.fc-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+/* ── CHECKER ── */
+.checker-section { padding:6rem 2rem; max-width:700px; margin:0 auto; position:relative; z-index:1; }
+.checker-box { padding:2.5rem; margin-top:2rem; position:relative; overflow:hidden; }
+.checker-box::before {
+  content:''; position:absolute; top:-80px; right:-80px;
+  width:200px; height:200px;
+  background:radial-gradient(circle,rgba(34,211,238,0.07),transparent 70%);
+  pointer-events:none;
+}
+.input-row { display:flex; gap:10px; margin-bottom:1.5rem; }
+.phone-in {
+  flex:1; background:rgba(255,255,255,0.04);
+  border:1px solid var(--border); color:var(--text);
+  padding:0 1.1rem; height:52px; border-radius:12px;
+  font-size:0.95rem; font-family:'Space Grotesk'; outline:none;
+  transition:border-color 0.2s, box-shadow 0.2s;
+}
+.phone-in:focus { border-color:var(--cyan); box-shadow:0 0 0 3px rgba(34,211,238,0.1); }
+.phone-in::placeholder { color:var(--muted); }
+.check-btn { height:52px; padding:0 1.5rem; }
+
+/* RESULT */
+.result-wrap { display:none; }
+.result-wrap.show { display:block; animation:fadeUp 0.4s ease; }
+.risk-row { display:flex; align-items:center; gap:14px; margin-bottom:1.25rem; }
+.r-icon {
+  width:52px; height:52px; border-radius:14px;
+  display:flex; align-items:center; justify-content:center; font-size:1.4rem;
+  border:1px solid;
+}
+.r-label { font-family:'Syne',sans-serif; font-size:1.05rem; font-weight:700; }
+.r-phone { font-size:0.78rem; color:var(--muted); margin-top:3px; }
+.bar-wrap { height:4px; background:rgba(255,255,255,0.05); border-radius:99px; margin-bottom:1.25rem; overflow:hidden; }
+.bar-fill { height:100%; border-radius:99px; transition:width 1s cubic-bezier(0.4,0,0.2,1); }
+.bar-danger { background:linear-gradient(90deg,#f87171,#ef4444); }
+.bar-warn   { background:linear-gradient(90deg,#fcd34d,#fbbf24); }
+.bar-safe   { background:linear-gradient(90deg,#6ee7b7,#34d399); }
+.reason-box {
+  font-size:0.9rem; line-height:1.78; padding:1rem 1.25rem;
+  border-radius:12px; background:rgba(255,255,255,0.03);
+  border-left:3px solid; margin-bottom:1.25rem;
+}
+.tips-list { display:flex; flex-direction:column; gap:8px; }
+.tip {
+  display:flex; align-items:flex-start; gap:10px;
+  font-size:0.85rem; color:var(--muted);
+  padding:9px 13px; border-radius:10px;
+  background:rgba(168,85,247,0.04); border:1px solid rgba(168,85,247,0.08);
+}
+.tip-dot { width:5px; height:5px; border-radius:50%; background:var(--cyan); margin-top:7px; flex-shrink:0; box-shadow:0 0 6px var(--cyan); }
+.loading-wrap { display:none; text-align:center; padding:2.5rem; }
+.loading-wrap.show { display:block; }
+.loading-wrap p { color:var(--muted); font-size:0.85rem; margin-top:1rem; letter-spacing:0.05em; }
+.cstats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:1.75rem; }
+.cstat { padding:14px; text-align:center; border-radius:12px; }
+.cstat-n { font-family:'Syne',sans-serif; font-size:1.35rem; font-weight:800; }
+.cstat-l { font-size:0.7rem; color:var(--muted); margin-top:4px; text-transform:uppercase; letter-spacing:0.08em; }
+.hdiv { border:none; border-top:1px solid var(--border); margin:1.5rem 0; }
+.htitle { font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.75rem; }
+.hrow {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 14px; border-radius:10px; margin-bottom:6px;
+  cursor:pointer; transition:background 0.15s;
+  background:rgba(255,255,255,0.02); border:1px solid transparent;
+}
+.hrow:hover { background:rgba(168,85,247,0.06); border-color:var(--border); }
+.hbadge { font-size:0.7rem; padding:3px 10px; border-radius:999px; font-weight:700; letter-spacing:0.06em; }
+
+/* ── FEATURES ── */
+.features { padding:6rem 2rem; max-width:1100px; margin:0 auto; position:relative; z-index:1; }
+.feat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.25rem; margin-top:3rem; }
+.feat {
+  padding:1.75rem; position:relative; overflow:hidden;
+  border-radius:var(--r-lg); cursor:default;
+  transition:transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+.feat-bg {
+  position:absolute; inset:0; opacity:0; transition:opacity 0.35s;
+  background:radial-gradient(circle at 15% 15%,rgba(168,85,247,0.08),transparent 60%);
+}
+.feat:hover { transform:translateY(-6px); box-shadow:0 16px 48px rgba(168,85,247,0.1); border-color:rgba(168,85,247,0.3); }
+.feat:hover .feat-bg { opacity:1; }
+.feat-ico {
+  width:48px; height:48px; border-radius:13px;
+  background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(34,211,238,0.05));
+  border:1px solid rgba(168,85,247,0.2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.3rem; margin-bottom:1.1rem;
+  box-shadow:0 0 20px rgba(168,85,247,0.1);
+  transition:box-shadow 0.3s, transform 0.3s;
+}
+.feat:hover .feat-ico { transform:scale(1.1); box-shadow:0 0 30px rgba(168,85,247,0.25); }
+.feat-t { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; margin-bottom:0.5rem; }
+.feat-d { font-size:0.86rem; color:var(--muted); line-height:1.7; }
+
+/* ── HOW ── */
+.how { padding:6rem 2rem; max-width:860px; margin:0 auto; text-align:center; position:relative; z-index:1; }
+.steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:2.5rem; margin-top:3.5rem; position:relative; }
+.steps::before {
+  content:''; position:absolute; top:24px; left:15%; right:15%; height:1px;
+  background:linear-gradient(90deg,transparent,rgba(168,85,247,0.2),rgba(34,211,238,0.2),transparent);
+}
+.step-n {
+  font-family:'Syne',sans-serif; font-size:2.8rem; font-weight:800;
+  background:linear-gradient(135deg,rgba(168,85,247,0.3),rgba(34,211,238,0.15));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text; line-height:1; margin-bottom:0.75rem;
+}
+.step-t { font-weight:700; margin-bottom:0.5rem; font-size:0.95rem; }
+.step-d { font-size:0.85rem; color:var(--muted); line-height:1.7; }
+
+/* ── CTA ── */
+.cta-section { padding:6rem 2rem; text-align:center; position:relative; z-index:1; }
+.cta-box {
+  max-width:600px; margin:0 auto; padding:3.5rem 2.5rem;
+  border-radius:var(--r-xl);
+  background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(34,211,238,0.05));
+  border:1px solid rgba(168,85,247,0.2);
+  position:relative; overflow:hidden;
+}
+.cta-box::before {
+  content:''; position:absolute; width:350px; height:350px;
+  background:radial-gradient(circle,rgba(168,85,247,0.12),transparent 70%);
+  top:-120px; right:-100px; pointer-events:none;
+}
+.cta-box::after {
+  content:''; position:absolute; width:200px; height:200px;
+  background:radial-gradient(circle,rgba(34,211,238,0.08),transparent 70%);
+  bottom:-80px; left:-60px; pointer-events:none;
+}
+.cta-box h2 { font-size:clamp(1.8rem,4vw,2.5rem); margin-bottom:1rem; }
+.cta-box p { color:var(--muted); margin-bottom:2rem; line-height:1.75; }
+.cta-checks { display:flex; gap:1.5rem; justify-content:center; flex-wrap:wrap; margin-top:1.5rem; }
+.cta-check { font-size:0.8rem; color:var(--muted); display:flex; align-items:center; gap:6px; }
+.cta-check::before { content:'✓'; color:var(--safe); font-weight:700; }
+
+@media(max-width:600px){
+  .hero-stats { gap:2rem; }
+  .float-card { display:none; }
+  .input-row { flex-direction:column; }
+  .check-btn { width:100%; }
+  .steps::before { display:none; }
+}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<nav class="topnav">
+  <a href="index.html" class="logo">
+    <div class="logo-ring">⚡</div><span>SAVE</span>ONE
+  </a>
+  <div class="nav-links">
+    <a href="#checker" class="active">Tekshirish</a>
+    <a href="#features">Imkoniyatlar</a>
+    <a href="#how">Jarayon</a>
+    <a href="education.html">Ta'lim</a>
+  </div>
+  <div class="nav-right" id="navUser"></div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="float-card glass bg-danger fc1">
+    <div class="fc-dot" style="background:var(--danger);box-shadow:0 0 8px var(--danger)"></div>
+    <span>+998 97 328 76 66 — XAVFLI</span>
+  </div>
+  <div class="float-card glass bg-safe fc2">
+    <div class="fc-dot" style="background:var(--safe);box-shadow:0 0 8px var(--safe)"></div>
+    <span>+998 71 200 00 00 — Xavfsiz</span>
+  </div>
+  <div class="float-card glass bg-warn fc3">
+    <div class="fc-dot" style="background:var(--warn);box-shadow:0 0 8px var(--warn)"></div>
+    <span>+7 999 123 45 67 — Shubhali</span>
+  </div>
+
+  <div class="badge-live anim-1">
+    <div class="badge-dot"></div>BETA — 1,243+ kishi kutmoqda
+  </div>
+  <h1 class="s-title anim-2">
+    Bitta odam uchun<br>
+    <span class="line2">to'liq himoya</span>
+  </h1>
+  <p class="hero-sub anim-3">
+    Shubhali qo'ng'iroq va xabarlardan AI yordamida real vaqtda himoya.<br>
+    O'zbekistonda scam va firibgarlikka qarshi birinchi platforma.
+  </p>
+  <div class="hero-btns anim-4">
+    <a href="#checker" class="btn-primary">⚡ Raqam Tekshirish</a>
+    <a href="ai-assistant.html" class="btn-ghost">AI Yordamchi →</a>
+  </div>
+  <div class="hero-stats anim-5">
+    <div class="hstat"><div class="n">12,847</div><div class="l">Bloklangan</div></div>
+    <div class="hstat"><div class="n">96.4%</div><div class="l">Aniqlik</div></div>
+    <div class="hstat"><div class="n">847+</div><div class="l">Foydalanuvchi</div></div>
+  </div>
+</section>
+
+<!-- CHECKER -->
+<section class="checker-section" id="checker">
+  <div class="s-eyebrow">AI Raqam Tekshiruvi</div>
+  <h2 class="s-title" style="font-size:clamp(1.5rem,3.5vw,2.2rem)">Shubhali raqamni<br>bir zumda aniqlang</h2>
+
+  <div class="checker-box glass-strong">
+    <div class="input-row">
+      <input type="tel" class="phone-in" id="phoneIn"
+        placeholder="+998 90 123 45 67 yoki +7 999..."
+        oninput="formatPhone(this)" onkeydown="if(event.key==='Enter')checkPhone()">
+      <button class="btn-primary check-btn" onclick="checkPhone()" id="checkBtn">
+        Tekshirish
+      </button>
+    </div>
+
+    <!-- LOADING -->
+    <div class="loading-wrap" id="loadWrap">
+      <div class="spinner" style="margin:0 auto"></div>
+      <p id="loadMsg">AI tahlil qilmoqda...</p>
+    </div>
+
+    <!-- RESULT -->
+    <div class="result-wrap" id="resultWrap">
+      <div class="risk-row">
+        <div class="r-icon" id="rIcon"></div>
+        <div>
+          <div class="r-label" id="rLabel"></div>
+          <div class="r-phone" id="rPhone"></div>
+        </div>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill" id="barFill" style="width:0"></div></div>
+      <div class="reason-box" id="reasonBox"></div>
+      <div class="tips-list" id="tipsList"></div>
+      <div class="cstats">
+        <div class="cstat glass"><div class="cstat-n" id="cs1">—</div><div class="cstat-l">Xavf darajasi</div></div>
+        <div class="cstat glass"><div class="cstat-n" id="cs2">—</div><div class="cstat-l">Mintaqa</div></div>
+        <div class="cstat glass"><div class="cstat-n" id="cs3">—</div><div class="cstat-l">Tur</div></div>
+      </div>
+    </div>
+
+    <div class="hdiv"></div>
+    <div class="htitle">So'nggi tekshirishlar</div>
+    <div id="historyList">
+      <div class="hrow" onclick="fillPhone('+998 97 328 76 66')">
+        <span style="font-size:0.88rem">+998 97 328 76 66</span>
+        <span class="hbadge bg-danger risk-danger">XAVFLI</span>
+      </div>
+      <div class="hrow" onclick="fillPhone('+7 999 123 45 67')">
+        <span style="font-size:0.88rem">+7 999 123 45 67</span>
+        <span class="hbadge bg-warn risk-warn">SHUBHALI</span>
+      </div>
+      <div class="hrow" onclick="fillPhone('+998 71 200 00 02')">
+        <span style="font-size:0.88rem">+998 71 200 00 02</span>
+        <span class="hbadge bg-safe risk-safe">XAVFSIZ</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div style="text-align:center; margin-bottom:1rem">
+    <div class="s-eyebrow" style="justify-content:center">Imkoniyatlar</div>
+    <h2 class="s-title" style="font-size:clamp(1.6rem,3.5vw,2.5rem)">Hamma narsadan<br>bir joyda himoya</h2>
+  </div>
+  <div class="feat-grid">
+    <div class="feat glass">
+      <div class="feat-bg"></div>
+      <div class="feat-ico">🛡️</div>
+      <div class="feat-t">Real Vaqt Himoya</div>
+      <div class="feat-d">Har bir qo'ng'iroqni millisekundlarda tahlil qilib, xavfni aniqlaydi.</div>
+    </div>
+    <div class="feat glass">
+      <div class="feat-bg"></div>
+      <div class="feat-ico">🤖</div>
+      <div class="feat-t">AI Tahlil</div>
+      <div class="feat-d">Gemini AI yordamida raqam tarixini, naqshlarni va xavf belgilarini aniqlaydi.</div>
+    </div>
+    <div class="feat glass">
+      <div class="feat-bg"></div>
+      <div class="feat-ico">📊</div>
+      <div class="feat-t">Shaxsiy Dashboard</div>
+      <div class="feat-d">Barcha tekshirishlar, bloklashlar va xavfsizlik holati bir joyda.</div>
+    </div>
+    <div class="feat glass">
+      <div class="feat-bg"></div>
+      <div class="feat-ico">📚</div>
+      <div class="feat-t">Ta'lim Markazi</div>
+      <div class="feat-d">Scam va phishing haqida bilimingizni oshiring, testlar orqali tekshiring.</div>
+    </div>
+    <div class="feat glass">
+      <div class="feat-bg"></div>
+      <div class="feat-ico">🔔</div>
+      <div class="feat-t">Telegram Xabarnoma</div>
+      <div class="feat-d">Yangi tahdid aniqlansa — Telegram da darhol xabar olasiz.</div>
+    </div>
+    <div class="feat glass">
+      <div class="feat-bg"></div>
+      <div class="feat-ico">🌍</div>
+      <div class="feat-t">O'zbekiston Bazasi</div>
+      <div class="feat-d">Mahalliy raqamlar, operatorlar va firibgarlik naqshlarini to'liq qamrab oladi.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW -->
+<section class="how" id="how">
+  <div class="s-eyebrow" style="justify-content:center">Qanday ishlaydi</div>
+  <h2 class="s-title" style="font-size:clamp(1.6rem,3.5vw,2.5rem)">3 qadamda himoya</h2>
+  <div class="steps">
+    <div>
+      <div class="step-n">01</div>
+      <div class="step-t">Raqam kiriting</div>
+      <div class="step-d">Shubhali qo'ng'iroq raqamini kiritasiz yoki qo'ng'iroq kelganda tekshirasiz.</div>
+    </div>
+    <div>
+      <div class="step-n">02</div>
+      <div class="step-t">AI tahlil qiladi</div>
+      <div class="step-d">Gemini AI raqamni millionlab ma'lumot bilan taqqoslab, xavf darajasini aniqlaydi.</div>
+    </div>
+    <div>
+      <div class="step-n">03</div>
+      <div class="step-t">Himoyalanasiz</div>
+      <div class="step-d">Aniq natija va maslahatlar bilan firibgardan o'zingizni himoya qilasiz.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-box">
+    <div class="s-eyebrow" style="justify-content:center">Hoziroq boshlang</div>
+    <h2 class="s-title">Himoyangizni<br>kuchaytiring</h2>
+    <p>O'zbekistondagi minglab odamlar allaqachon SAVEONE bilan himoyalangan. Siz ham qo'shiling.</p>
+    <a href="auth.html" class="btn-primary" style="font-size:0.95rem; padding:0.9rem 2.5rem">⚡ Bepul Ro'yxatdan O'ting</a>
+    <div class="cta-checks">
+      <div class="cta-check">Bepul boshlash</div>
+      <div class="cta-check">Karta shart emas</div>
+      <div class="cta-check">O'zbek tilida</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>© 2025 <span>SAVEONE</span> — O'zbekiston raqamli xavfsizligi. Barcha huquqlar himoyalangan.</p>
+  <p style="margin-top:6px;opacity:0.5">Ctrl+Space → AI Yordamchi</p>
+</footer>
+
+<script src="auth.js"></script>
+<script src="ai-navigator.js"></script>
+<script>
+const GEMINI_KEY = 'AIzaSyCgJGT--Dv104gEYZ8tY8Ed6UzS5wgEtxs';
+
+// ── Particles ──
+function createParticles() {
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 3 + 1;
+    p.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${Math.random()*100}%;
+      top:${Math.random()*100}%;
+      background:${Math.random()>0.5?'var(--p1)':'var(--cyan)'};
+      animation-duration:${Math.random()*15+10}s;
+      animation-delay:${Math.random()*10}s;
+    `;
+    document.body.appendChild(p);
+  }
+}
+createParticles();
+
+// ── Phone formatter ──
+function formatPhone(el) {
+  let v = el.value.replace(/\D/g,'');
+  if (el.value.startsWith('+')) v = el.value;
+}
+function fillPhone(num) {
+  document.getElementById('phoneIn').value = num;
+  checkPhone();
+}
+
+// ── Raqam tekshirish ──
+async function checkPhone() {
+  const raw = document.getElementById('phoneIn').value.trim();
+  if (!raw) return;
+
+  const checkBtn = document.getElementById('checkBtn');
+  checkBtn.disabled = true;
+  document.getElementById('loadWrap').classList.add('show');
+  document.getElementById('resultWrap').classList.remove('show');
+
+  // Loading xabarlari
+  const msgs = ['AI ma\'lumotlarni tahlil qilmoqda...','Raqam tarixini tekshirmoqda...','Xavf darajasini hisoblamoqda...'];
+  let mi = 0;
+  const msgEl = document.getElementById('loadMsg');
+  const msgInt = setInterval(() => { msgEl.textContent = msgs[mi++ % msgs.length]; }, 900);
+
+  try {
+    const prompt = `Ushbu telefon raqamni O'zbekiston kontekstida tahlil qil: "${raw}"
+
+JSON formatida qat'iy javob ber:
+{
+  "risk": "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN",
+  "score": 0-100 (xavf foizi),
+  "label": "XAVFLI" | "SHUBHALI" | "XAVFSIZ" | "NOMA'LUM",
+  "emoji": "🚨" | "⚠️" | "✅" | "❓",
+  "region": "mintaqa nomi",
+  "type": "Scam" | "Phishing" | "Rasmiy" | "Shaxsiy" | "Noma'lum",
+  "reason": "2-3 jumlat tahlil (o'zbek tilida)",
+  "tips": ["maslahat 1", "maslahat 2", "maslahat 3"]
+}
+
+Raqam tahlili uchun:
+- +998: O'zbekiston (operator, viloyat aniqlash)
+- +7: Rossiya (ko'pincha scam)
+- Boshqa xalqaro: ehtiyot bo'lish kerak
+- Noma'lum raqamlar: NOMA'LUM kategoriya`;
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          contents:[{role:'user',parts:[{text:prompt}]}],
+          generationConfig:{ temperature:0.3, maxOutputTokens:400, responseMimeType:'application/json' }
+        })
+      }
+    );
+
+    clearInterval(msgInt);
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data?.error?.message || 'API xatosi');
+
+    const raw2 = data.candidates[0].content.parts[0].text;
+    let result;
+    try { result = JSON.parse(raw2); }
+    catch { result = { risk:'UNKNOWN', score:50, label:"NOMA'LUM", emoji:'❓', region:'Noma\'lum', type:'Noma\'lum', reason:'Tahlil qilinmadi.', tips:[] }; }
+
+    // Natijani ko'rsatish
+    showResult(raw, result);
+
+  } catch (err) {
+    clearInterval(msgInt);
+    // Self-heal
+    document.getElementById('loadWrap').classList.remove('show');
+    showSelfHeal(err.message, raw);
+    checkBtn.disabled = false;
+  }
+}
+
+function showResult(phone, r) {
+  document.getElementById('loadWrap').classList.remove('show');
+  document.getElementById('checkBtn').disabled = false;
+
+  const clsMap = { HIGH:'danger', MEDIUM:'warn', LOW:'safe', UNKNOWN:'warn' };
+  const cls = clsMap[r.risk] || 'warn';
+
+  const rIcon = document.getElementById('rIcon');
+  rIcon.textContent = r.emoji;
+  rIcon.className = `r-icon bg-${cls}`;
+  document.getElementById('rLabel').textContent = r.label;
+  document.getElementById('rLabel').className = `r-label risk-${cls}`;
+  document.getElementById('rPhone').textContent = phone;
+
+  const bar = document.getElementById('barFill');
+  bar.className = `bar-fill bar-${cls}`;
+  setTimeout(() => { bar.style.width = r.score + '%'; }, 50);
+
+  const rb = document.getElementById('reasonBox');
+  rb.textContent = r.reason;
+  rb.style.borderLeftColor = `var(--${cls})`;
+
+  const tl = document.getElementById('tipsList');
+  tl.innerHTML = (r.tips || []).map(t =>
+    `<div class="tip"><div class="tip-dot"></div><span>${t}</span></div>`
+  ).join('');
+
+  document.getElementById('cs1').textContent = r.score + '%';
+  document.getElementById('cs1').style.color = `var(--${cls})`;
+  document.getElementById('cs2').textContent = r.region || '—';
+  document.getElementById('cs3').textContent = r.type || '—';
+
+  document.getElementById('resultWrap').classList.add('show');
+}
+
+function showSelfHeal(errMsg, phone) {
+  // Self-healing: xatoni foydalanuvchiga ko'rsatmasdan hal qilish
+  const banner = document.getElementById('heal-banner');
+  if (banner) {
+    banner.innerHTML = '🔄 <span>Ulanish muammosi. 3 soniyadan keyin qayta urinamiz...</span>';
+    banner.classList.add('show');
+    setTimeout(() => {
+      banner.classList.remove('show');
+      document.getElementById('phoneIn').value = phone;
+      checkPhone();
+    }, 3000);
+  }
+}
+</script>
+</body>
+</html>
