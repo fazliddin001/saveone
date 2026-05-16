@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ta'lim — SAVEONE</title>
+<link rel="stylesheet" href="style.css">
+<style>
+body { padding-top:64px; }
+.page { max-width:1000px; margin:0 auto; padding:2.5rem 2rem; position:relative; z-index:1; }
+
+/* PROGRESS */
+.progress-card { padding:1.75rem; border-radius:var(--r-lg); margin-bottom:2rem; display:flex; align-items:center; gap:2rem; flex-wrap:wrap; }
+.prog-ring { position:relative; width:80px; height:80px; flex-shrink:0; }
+.prog-ring svg { transform:rotate(-90deg); }
+.prog-text { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.prog-n { font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:800; color:var(--cyan); }
+.prog-l { font-size:0.62rem; color:var(--muted); }
+.prog-info { flex:1; min-width:180px; }
+.prog-info h3 { font-family:'Syne',sans-serif; font-weight:700; margin-bottom:4px; }
+.prog-info p { font-size:0.84rem; color:var(--muted); }
+.prog-bar-w { height:4px; background:rgba(255,255,255,0.05); border-radius:99px; margin-top:10px; overflow:hidden; max-width:300px; }
+.prog-bar-f { height:100%; border-radius:99px; background:linear-gradient(90deg,var(--p2),var(--cyan)); width:33%; }
+
+/* MODULES */
+.modules-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.25rem; margin-bottom:2rem; }
+.module { padding:1.5rem; border-radius:var(--r-md); cursor:pointer; position:relative; overflow:hidden; transition:all 0.3s; }
+.module-glow { position:absolute; inset:0; opacity:0; transition:opacity 0.35s; background:radial-gradient(circle at 0 0,rgba(168,85,247,0.07),transparent 60%); }
+.module:hover { transform:translateY(-5px); border-color:rgba(168,85,247,0.3); box-shadow:0 12px 40px rgba(168,85,247,0.1); }
+.module:hover .module-glow { opacity:1; }
+.mod-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1rem; }
+.mod-ico { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(34,211,238,0.05)); border:1px solid rgba(168,85,247,0.2); transition:transform 0.3s; }
+.module:hover .mod-ico { transform:scale(1.1) rotate(-5deg); }
+.mod-status { font-size:0.7rem; padding:3px 10px; border-radius:999px; font-weight:600; }
+.st-done { background:rgba(52,211,153,0.12); color:var(--safe); }
+.st-prog { background:rgba(34,211,238,0.1); color:var(--cyan); }
+.st-lock { background:rgba(255,255,255,0.06); color:var(--muted); }
+.mod-title { font-family:'Syne',sans-serif; font-weight:700; font-size:0.95rem; margin-bottom:0.4rem; }
+.mod-desc { font-size:0.83rem; color:var(--muted); line-height:1.65; margin-bottom:1rem; }
+.mod-meta { display:flex; align-items:center; gap:12px; font-size:0.76rem; color:var(--muted); }
+.mod-prog-w { height:3px; background:rgba(255,255,255,0.05); border-radius:99px; margin-top:1rem; overflow:hidden; }
+.mod-prog-f { height:100%; border-radius:99px; background:linear-gradient(90deg,var(--p2),var(--cyan)); }
+
+/* TIPS */
+.tips-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:1rem; }
+.tip-card { padding:1.25rem; border-radius:var(--r-md); transition:all 0.25s; }
+.tip-card:hover { transform:translateY(-3px); border-color:rgba(168,85,247,0.25); }
+.tip-ico { font-size:1.5rem; margin-bottom:0.75rem; }
+.tip-title { font-weight:700; font-size:0.9rem; margin-bottom:0.4rem; }
+.tip-text { font-size:0.83rem; color:var(--muted); line-height:1.65; }
+
+/* QUIZ */
+.quiz-card { padding:2rem; border-radius:var(--r-lg); margin-top:2rem; }
+.quiz-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:10px; }
+.quiz-header h3 { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; }
+.quiz-progress { font-size:0.78rem; color:var(--muted); }
+.quiz-q { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; margin-bottom:1.5rem; line-height:1.55; }
+.quiz-options { display:flex; flex-direction:column; gap:10px; margin-bottom:1.5rem; }
+.quiz-opt {
+  padding:12px 16px; border-radius:12px; cursor:pointer;
+  background:rgba(255,255,255,0.03); border:1px solid var(--border);
+  font-size:0.87rem; transition:all 0.2s; text-align:left;
+  font-family:'Space Grotesk'; color:var(--text); display:flex; align-items:center; gap:10px;
+}
+.quiz-opt::before { content:'○'; color:var(--muted); font-size:0.9rem; flex-shrink:0; }
+.quiz-opt:hover { border-color:rgba(168,85,247,0.35); background:rgba(168,85,247,0.06); }
+.quiz-opt:hover::before { content:'◉'; color:var(--p1); }
+.quiz-opt.correct { background:rgba(52,211,153,0.1); border-color:rgba(52,211,153,0.3); color:var(--safe); }
+.quiz-opt.correct::before { content:'✓'; color:var(--safe); }
+.quiz-opt.wrong { background:rgba(248,113,113,0.1); border-color:rgba(248,113,113,0.3); color:var(--danger); }
+.quiz-opt.wrong::before { content:'✗'; color:var(--danger); }
+.quiz-result { font-size:0.88rem; padding:1rem 1.25rem; border-radius:12px; display:none; line-height:1.7; }
+.quiz-result.show { display:block; animation:fadeUp 0.3s ease; }
+.quiz-nav { display:flex; gap:10px; margin-top:1rem; }
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<nav class="topnav">
+  <a href="index.html" class="logo"><div class="logo-ring">⚡</div><span>SAVE</span>ONE</a>
+  <div class="nav-links">
+    <a href="index.html">Tekshirish</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="ai-assistant.html">AI Chat</a>
+    <a href="call-protection.html">Himoya</a>
+    <a href="education.html" class="active">Ta'lim</a>
+  </div>
+</nav>
+
+<script src="auth.js"></script>
+<script src="ai-navigator.js"></script>
+
+<div class="page">
+  <div class="s-eyebrow">Ta'lim Markazi</div>
+  <h1 class="s-title" style="font-size:clamp(1.5rem,3.5vw,2.2rem);margin-bottom:0.5rem">Xavfsizlik Bilimingiz</h1>
+  <p style="color:var(--muted);font-size:0.88rem;margin-bottom:2rem">Firibgarlik usullarini o'rganing, testlar orqali o'zingizni tekshiring</p>
+
+  <!-- PROGRESS -->
+  <div class="progress-card glass">
+    <div class="prog-ring">
+      <svg width="80" height="80" viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(34,211,238,0.1)" stroke-width="6"/>
+        <circle cx="40" cy="40" r="34" fill="none" stroke="url(#pgGrad)" stroke-width="6"
+          stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="143"/>
+        <defs><linearGradient id="pgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#7c3aed"/>
+          <stop offset="100%" stop-color="#22d3ee"/>
+        </linearGradient></defs>
+      </svg>
+      <div class="prog-text"><div class="prog-n">33%</div><div class="prog-l">Tugallandi</div></div>
+    </div>
+    <div class="prog-info">
+      <h3>Umumiy Progress</h3>
+      <p>2/6 modulni tugatdingiz. Davom eting!</p>
+      <div class="prog-bar-w"><div class="prog-bar-f"></div></div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-family:'Syne',sans-serif;font-size:1.7rem;font-weight:800;color:var(--cyan)">120</div>
+      <div style="font-size:0.76rem;color:var(--muted)">Ballar</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-family:'Syne',sans-serif;font-size:1.7rem;font-weight:800;color:var(--p1)">🔥 5</div>
+      <div style="font-size:0.76rem;color:var(--muted)">Kunlik streak</div>
+    </div>
+  </div>
+
+  <!-- MODULES -->
+  <div class="s-eyebrow">O'quv Modullari</div>
+  <div class="modules-grid">
+    <div class="module glass" onclick="openModule(1)">
+      <div class="module-glow"></div>
+      <div class="mod-top"><div class="mod-ico">📞</div><span class="mod-status st-done">✓ Tugallandi</span></div>
+      <div class="mod-title">Bank Qo'ng'iroq Firibgarligi</div>
+      <div class="mod-desc">Bank xodimi sifatida qo'ng'iroq qiladigan firibgarlarni qanday aniqlash.</div>
+      <div class="mod-meta"><span>⏱ 8 daqiqa</span><span>📝 5 savol</span><span>⭐ 30 ball</span></div>
+      <div class="mod-prog-w"><div class="mod-prog-f" style="width:100%"></div></div>
+    </div>
+    <div class="module glass" onclick="openModule(2)">
+      <div class="module-glow"></div>
+      <div class="mod-top"><div class="mod-ico">📱</div><span class="mod-status st-done">✓ Tugallandi</span></div>
+      <div class="mod-title">Phishing SMS Hujumlari</div>
+      <div class="mod-desc">Soxta SMS havolalar orqali bank sahifalarini taqlid qiluvchi hujumlar.</div>
+      <div class="mod-meta"><span>⏱ 6 daqiqa</span><span>📝 4 savol</span><span>⭐ 25 ball</span></div>
+      <div class="mod-prog-w"><div class="mod-prog-f" style="width:100%"></div></div>
+    </div>
+    <div class="module glass" onclick="openModule(3)">
+      <div class="module-glow"></div>
+      <div class="mod-top"><div class="mod-ico">🧠</div><span class="mod-status st-prog">● Jarayonda</span></div>
+      <div class="mod-title">Ijtimoiy Muhandislik</div>
+      <div class="mod-desc">Psixologik manipulyatsiya usullari va ularga qarshi turish yo'llari.</div>
+      <div class="mod-meta"><span>⏱ 10 daqiqa</span><span>📝 6 savol</span><span>⭐ 35 ball</span></div>
+      <div class="mod-prog-w"><div class="mod-prog-f" style="width:45%"></div></div>
+    </div>
+    <div class="module glass" onclick="openModule(4)">
+      <div class="module-glow"></div>
+      <div class="mod-top"><div class="mod-ico">🔐</div><span class="mod-status st-lock">🔒 Qulfli</span></div>
+      <div class="mod-title">Parol va 2FA Xavfsizligi</div>
+      <div class="mod-desc">Kuchli parol yaratish, ikki bosqichli autentifikatsiya.</div>
+      <div class="mod-meta"><span>⏱ 7 daqiqa</span><span>📝 5 savol</span><span>⭐ 30 ball</span></div>
+      <div class="mod-prog-w"><div class="mod-prog-f" style="width:0%"></div></div>
+    </div>
+    <div class="module glass" onclick="openModule(5)">
+      <div class="module-glow"></div>
+      <div class="mod-top"><div class="mod-ico">📲</div><span class="mod-status st-lock">🔒 Qulfli</span></div>
+      <div class="mod-title">Telegram APK Xavflari</div>
+      <div class="mod-desc">Telegram orqali yuborilgan zararli APK fayllarni aniqlash.</div>
+      <div class="mod-meta"><span>⏱ 9 daqiqa</span><span>📝 5 savol</span><span>⭐ 30 ball</span></div>
+      <div class="mod-prog-w"><div class="mod-prog-f" style="width:0%"></div></div>
+    </div>
+    <div class="module glass" onclick="openModule(6)">
+      <div class="module-glow"></div>
+      <div class="mod-top"><div class="mod-ico">🏦</div><span class="mod-status st-lock">🔒 Qulfli</span></div>
+      <div class="mod-title">Bank va Karta Himoyasi</div>
+      <div class="mod-desc">Karta ma'lumotlarini himoya qilish, onlayn to'lovlar xavfsizligi.</div>
+      <div class="mod-meta"><span>⏱ 12 daqiqa</span><span>📝 7 savol</span><span>⭐ 40 ball</span></div>
+      <div class="mod-prog-w"><div class="mod-prog-f" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- QUICK TIPS -->
+  <div class="s-eyebrow">Tezkor Maslahatlar</div>
+  <div class="tips-grid" style="margin-bottom:2rem">
+    <div class="tip-card glass">
+      <div class="tip-ico">🏦</div>
+      <div class="tip-title">Bank OTP so'ramaydi</div>
+      <div class="tip-text">Hech qanday bank telefon orqali SMS kod, karta raqami yoki CVV so'ramaydi. Bu har doim firibgarlik.</div>
+    </div>
+    <div class="tip-card glass">
+      <div class="tip-ico">⏰</div>
+      <div class="tip-title">Shoshilmang</div>
+      <div class="tip-text">Firibgarlar har doim "tez qaror qiling" deydi. To'xtab, tekshiring — haqiqiy muammo 5 daqiqa kutadi.</div>
+    </div>
+    <div class="tip-card glass">
+      <div class="tip-ico">🔗</div>
+      <div class="tip-title">Havola tekshiring</div>
+      <div class="tip-text">SMS'dagi havolani bosmadan oldin domenni diqqat bilan o'qing. sberbank.uz ≠ sberbankuz.ru</div>
+    </div>
+    <div class="tip-card glass">
+      <div class="tip-ico">👤</div>
+      <div class="tip-title">Ma'lumot bermang</div>
+      <div class="tip-text">Noma'lum odamga ism, manzil, pasport yoki moliyaviy ma'lumot bermang — hech qachon.</div>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="s-eyebrow">Bilimingizni Tekshiring</div>
+  <div class="quiz-card glass">
+    <div class="quiz-header">
+      <h3>🎯 Savol: <span id="qNum">1</span>/5</h3>
+      <div class="quiz-progress">⭐ Har to'g'ri javob: +10 ball</div>
+    </div>
+    <div class="quiz-q" id="quizQ"></div>
+    <div class="quiz-options" id="quizOpts"></div>
+    <div class="quiz-result" id="quizResult"></div>
+    <div class="quiz-nav">
+      <button class="btn-primary" id="nextBtn" onclick="nextQ()" style="display:none">Keyingi →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const quizData = [
+  {
+    q: "Bank xodimi qo'ng'iroq qilib SMS orqali kelgan OTP kodini so'radi. Nima qilasiz?",
+    opts: ["Kodni aytaman — u bank xodimi", "Kodni aytmayman, qo'ng'iroqni uzaman", "Faqat so'nggi 4 raqamini aytaman", "Internetdan tekshiraman"],
+    correct: 1,
+    explain: "✅ To'g'ri! Hech qanday bank OTP kod so'ramaydi. Bu 100% firibgarlik. Qo'ng'iroqni darhol uzing va bankni rasmiy raqamidan qo'ng'iroq qiling."
+  },
+  {
+    q: "SMS'da: 'Kartangiz bloklandi, https://uzbank-help.ru ga kiring' — nima qilasiz?",
+    opts: ["Havolaga kiraman", "Havolani SAVEONE'da tekshiraman", "SMS'ni o'chiraman va e'tibor bermayman", "Bankga o'zim qo'ng'iroq qilaman va SMS'ni hisobga olmayman"],
+    correct: 3,
+    explain: "✅ To'g'ri! .ru domenli 'uzbank' — bu 100% phishing. SMS'ni o'chiring va bankni rasmiy raqamidan o'zingiz qo'ng'iroq qiling."
+  },
+  {
+    q: "+7 raqamdan O'zbekistonda yashayotgan odamga qo'ng'iroq keldi. Bu qancha xavfli?",
+    opts: ["Umuman xavfli emas", "Biroz shubhali, lekin xavfsiz", "Juda xavfli — +7 har doim scam", "Ehtiyot bo'lish kerak, lekin har doim emas"],
+    correct: 3,
+    explain: "✅ To'g'ri! +7 raqamlar ko'pincha xavfli, lekin hammasini bir xil deb bo'lmaydi. SAVEONE'da tekshirish eng to'g'ri yo'l."
+  },
+  {
+    q: "Telegram'da noma'lum odamdan 'yangi bank ilovasi' APK fayl keldi. Nima qilasiz?",
+    opts: ["O'rnataman — bank ilovasi kerak", "Faqat antivirusdan o'tkazib o'rnataman", "Faylni o'chiraman va yuboruvchini bloklayman", "Do'stimga ko'rsataman"],
+    correct: 2,
+    explain: "✅ To'g'ri! Noma'lum manbadan APK o'rnatmang. Bu telefongizni to'liq nazorat ostiga olishi mumkin. O'chiring va bloklan."
+  },
+  {
+    q: "Qaysi parol eng xavfsiz?",
+    opts: ["Tug'ilgan kuningiz: 19901515", "Ismingiz + raqam: Ali2025", "Tasodifiy belgilar: Kq#8mP!2vX", "Sevimli so'z: qovoq123"],
+    correct: 2,
+    explain: "✅ To'g'ri! Katta-kichik harf, raqam va belgilar aralashgan tasodifiy parol eng xavfsiz. Parol menejeri ishlatishni tavsiya qilamiz."
+  }
+];
+
+let currentQ = 0;
+let score = 0;
+let answered = false;
+
+function renderQ() {
+  const q = quizData[currentQ];
+  document.getElementById('qNum').textContent = currentQ + 1;
+  document.getElementById('quizQ').textContent = q.q;
+  document.getElementById('quizResult').className = 'quiz-result';
+  document.getElementById('nextBtn').style.display = 'none';
+  answered = false;
+
+  const opts = document.getElementById('quizOpts');
+  opts.innerHTML = q.opts.map((o, i) =>
+    `<button class="quiz-opt" onclick="answer(${i})">${o}</button>`
+  ).join('');
+}
+
+function answer(idx) {
+  if (answered) return;
+  answered = true;
+  const q = quizData[currentQ];
+  const opts = document.querySelectorAll('.quiz-opt');
+  opts.forEach((o, i) => {
+    o.style.pointerEvents = 'none';
+    if (i === q.correct) o.classList.add('correct');
+    else if (i === idx && idx !== q.correct) o.classList.add('wrong');
+  });
+
+  const res = document.getElementById('quizResult');
+  if (idx === q.correct) {
+    score += 10;
+    res.style.cssText = 'background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);color:var(--safe)';
+  } else {
+    res.style.cssText = 'background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);color:var(--danger)';
+  }
+  res.textContent = q.explain;
+  res.classList.add('show');
+  document.getElementById('nextBtn').style.display = 'flex';
+}
+
+function nextQ() {
+  currentQ++;
+  if (currentQ >= quizData.length) {
+    // Quiz tugadi
+    document.getElementById('quizQ').textContent = `🎉 Quiz tugadi! Sizning natijangiz: ${score}/${quizData.length*10} ball`;
+    document.getElementById('quizOpts').innerHTML = `
+      <div style="text-align:center;padding:1rem">
+        <div style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:${score>=30?'var(--safe)':'var(--warn)'}">
+          ${score} ball
+        </div>
+        <div style="color:var(--muted);font-size:0.88rem;margin-top:8px">
+          ${score>=40?'Ajoyib! Siz xavfsizlik ekspertisiz! 🏆':score>=30?'Yaxshi natija! Yana o\'qing 📚':'Ko\'proq o\'rganish kerak 💪'}
+        </div>
+        <button class="btn-primary" onclick="restartQuiz()" style="margin-top:1.5rem">🔄 Qaytadan boshlash</button>
+      </div>`;
+    document.getElementById('quizResult').className = 'quiz-result';
+    document.getElementById('nextBtn').style.display = 'none';
+    return;
+  }
+  renderQ();
+}
+
+function restartQuiz() {
+  currentQ = 0; score = 0;
+  renderQ();
+}
+
+function openModule(n) {
+  const toast = document.getElementById('ai-toast');
+  if (toast) {
+    toast.innerHTML = `<div style="color:var(--text)">📚 Modul ${n} tez orada ochiladi!</div>`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+}
+
+renderQ();
+</script>
+</body>
+</html>
