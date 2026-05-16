@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kirish — SAVEONE</title>
+<link rel="stylesheet" href="style.css">
+<style>
+body { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:2rem; }
+
+.auth-wrap { width:100%; max-width:460px; position:relative; z-index:1; }
+
+.auth-logo { text-align:center; margin-bottom:2rem; }
+.auth-logo a {
+  font-family:'Syne',sans-serif; font-weight:800; font-size:1.3rem;
+  letter-spacing:0.12em; color:var(--text); text-decoration:none;
+  display:inline-flex; align-items:center; gap:10px;
+}
+.auth-logo a span { background:linear-gradient(135deg,var(--p3),var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.logo-ring2 {
+  width:36px; height:36px; border-radius:10px;
+  background:linear-gradient(135deg,var(--p2),var(--cyan2));
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.1rem; box-shadow:0 0 24px rgba(124,58,237,0.5);
+}
+
+.auth-card {
+  border-radius:var(--r-xl); overflow:hidden;
+  background:rgba(255,255,255,0.035);
+  backdrop-filter:blur(48px) saturate(2);
+  border:1px solid rgba(168,85,247,0.18);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.04) inset, 0 32px 80px rgba(0,0,0,0.45), 0 0 60px rgba(124,58,237,0.07);
+}
+.auth-card::before {
+  content:''; position:absolute; width:300px; height:300px;
+  background:radial-gradient(circle,rgba(168,85,247,0.06),transparent 70%);
+  top:-100px; right:-80px; pointer-events:none;
+}
+
+/* TABS */
+.tabs { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid var(--border); }
+.tab {
+  padding:1.1rem; text-align:center; cursor:pointer;
+  font-weight:600; font-size:0.87rem; letter-spacing:0.04em;
+  color:var(--muted); background:none; border:none;
+  font-family:'Space Grotesk'; transition:all 0.25s; position:relative;
+}
+.tab.active { color:var(--p3); }
+.tab.active::after {
+  content:''; position:absolute; bottom:0; left:20%; right:20%;
+  height:2px; background:linear-gradient(90deg,var(--p2),var(--cyan));
+  border-radius:1px;
+}
+.tab:hover:not(.active) { color:var(--text); background:rgba(255,255,255,0.02); }
+
+/* FORM */
+.auth-body { padding:2rem; position:relative; }
+.form-panel { display:none; }
+.form-panel.active { display:block; animation:fadeUp 0.3s ease; }
+.auth-head { margin-bottom:1.75rem; }
+.auth-head h2 { font-family:'Syne',sans-serif; font-size:1.4rem; font-weight:800; margin-bottom:4px; }
+.auth-head p { font-size:0.84rem; color:var(--muted); line-height:1.65; }
+
+/* SOCIAL */
+.social-btns { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1.5rem; }
+.social-btn {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:11px; border-radius:12px; border:1px solid var(--border);
+  background:rgba(255,255,255,0.03); color:var(--text);
+  font-size:0.84rem; font-weight:600; cursor:pointer;
+  font-family:'Space Grotesk'; transition:all 0.2s; text-decoration:none;
+}
+.social-btn:hover { border-color:rgba(168,85,247,0.35); background:rgba(168,85,247,0.06); color:var(--p3); transform:translateY(-1px); }
+
+.divider {
+  display:flex; align-items:center; gap:12px;
+  margin-bottom:1.5rem; color:var(--muted); font-size:0.76rem;
+}
+.divider::before, .divider::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* INPUTS */
+.field { margin-bottom:1.1rem; }
+.field label { display:block; font-size:0.76rem; font-weight:600; color:var(--muted); margin-bottom:6px; letter-spacing:0.06em; text-transform:uppercase; }
+.field-wrap { position:relative; }
+.field-ico { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:1rem; pointer-events:none; opacity:0.5; }
+.finput {
+  width:100%; background:rgba(255,255,255,0.04);
+  border:1px solid var(--border); color:var(--text);
+  padding:0.75rem 1rem 0.75rem 2.75rem;
+  border-radius:12px; font-size:0.9rem;
+  font-family:'Space Grotesk'; outline:none;
+  transition:border-color 0.2s, box-shadow 0.2s;
+}
+.finput:focus { border-color:var(--p1); box-shadow:0 0 0 3px rgba(168,85,247,0.1); }
+.finput::placeholder { color:var(--muted); }
+
+/* STRENGTH */
+.strength-wrap { margin-top:6px; display:none; }
+.strength-wrap.show { display:block; }
+.strength-bars { display:flex; gap:4px; margin-bottom:4px; }
+.sbar { flex:1; height:3px; border-radius:99px; background:rgba(255,255,255,0.06); transition:background 0.3s; }
+.strength-label { font-size:0.7rem; color:var(--muted); }
+
+/* SUBMIT */
+.submit-btn {
+  width:100%; padding:0.9rem; border-radius:12px;
+  background:linear-gradient(135deg,var(--p2),var(--p1));
+  color:#fff; border:none; font-weight:700; font-size:0.95rem;
+  cursor:pointer; font-family:'Space Grotesk'; letter-spacing:0.04em;
+  transition:all 0.25s; box-shadow:0 4px 24px rgba(124,58,237,0.4);
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  position:relative; overflow:hidden;
+}
+.submit-btn::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.12),transparent);
+  opacity:0; transition:opacity 0.2s;
+}
+.submit-btn:hover { transform:translateY(-2px); box-shadow:0 8px 36px rgba(168,85,247,0.5); }
+.submit-btn:hover::before { opacity:1; }
+.submit-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+/* ALERT */
+.alert { padding:11px 15px; border-radius:12px; font-size:0.84rem; margin-bottom:1.25rem; display:none; line-height:1.55; }
+.alert.show { display:block; animation:fadeUp 0.3s ease; }
+.alert.success { background:rgba(52,211,153,0.08); border:1px solid rgba(52,211,153,0.2); color:var(--safe); }
+.alert.error { background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.2); color:var(--danger); }
+
+/* WELCOME BACK */
+.welcome-back {
+  text-align:center; padding:1.25rem; margin-bottom:1.5rem;
+  background:rgba(168,85,247,0.06); border-radius:12px;
+  border:1px solid rgba(168,85,247,0.15); display:none;
+}
+.welcome-back.show { display:block; animation:fadeUp 0.3s ease; }
+.wb-avatar {
+  width:52px; height:52px; border-radius:15px; margin:0 auto 0.75rem;
+  background:linear-gradient(135deg,var(--p2),var(--cyan2));
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.4rem; font-weight:700; color:#fff;
+  box-shadow:0 0 24px rgba(168,85,247,0.35);
+}
+.wb-name { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; }
+.wb-sub { font-size:0.78rem; color:var(--muted); margin-top:3px; }
+
+.auth-foot { text-align:center; margin-top:1.25rem; font-size:0.8rem; color:var(--muted); }
+.auth-foot a { color:var(--p3); text-decoration:none; }
+.terms { font-size:0.76rem; color:var(--muted); line-height:1.6; margin-bottom:1.25rem; }
+.terms a { color:var(--p3); text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<div class="auth-wrap">
+  <div class="auth-logo">
+    <a href="index.html">
+      <div class="logo-ring2">⚡</div><span>SAVE</span>ONE
+    </a>
+    <div style="font-size:0.76rem;color:var(--muted);margin-top:6px">Raqamli dunyoda xavfsiz bo'ling</div>
+  </div>
+
+  <div class="auth-card">
+    <div class="tabs">
+      <button class="tab active" id="tabLogin" onclick="switchTab('login')">Kirish</button>
+      <button class="tab" id="tabReg" onclick="switchTab('register')">Ro'yxat</button>
+    </div>
+
+    <div class="auth-body">
+
+      <!-- LOGIN -->
+      <div class="form-panel active" id="loginPanel">
+        <div class="welcome-back" id="welcomeBack">
+          <div class="wb-avatar" id="wbAvatar"></div>
+          <div class="wb-name" id="wbName"></div>
+          <div class="wb-sub">Xush kelibsiz qaytib! 👋</div>
+        </div>
+
+        <div class="auth-head">
+          <h2>Xush kelibsiz 👋</h2>
+          <p>Hisobingizga kiring va himoyangizni davom eting</p>
+        </div>
+
+        <div class="social-btns">
+          <button class="social-btn" onclick="socialLogin('Google')"><span>🌐</span>Google</button>
+          <button class="social-btn" onclick="socialLogin('Telegram')"><span>✈️</span>Telegram</button>
+        </div>
+        <div class="divider">yoki email bilan</div>
+
+        <div class="alert" id="loginAlert"></div>
+
+        <div class="field">
+          <label>Email manzil</label>
+          <div class="field-wrap">
+            <span class="field-ico">📧</span>
+            <input type="email" class="finput" id="loginEmail" placeholder="sizning@email.uz">
+          </div>
+        </div>
+        <div class="field">
+          <label>Parol</label>
+          <div class="field-wrap">
+            <span class="field-ico">🔒</span>
+            <input type="password" class="finput" id="loginPass" placeholder="••••••••"
+              onkeydown="if(event.key==='Enter')doLogin()">
+          </div>
+        </div>
+        <div style="text-align:right;margin-bottom:1.25rem">
+          <a href="#" style="font-size:0.78rem;color:var(--p3);text-decoration:none">Parolni unutdingizmi?</a>
+        </div>
+        <button class="submit-btn" id="loginBtn" onclick="doLogin()"><span>⚡</span>Kirish</button>
+        <div class="auth-foot" style="margin-top:1.25rem">
+          Hisob yo'qmi? <a href="#" onclick="switchTab('register')">Ro'yxatdan o'ting →</a>
+        </div>
+      </div>
+
+      <!-- REGISTER -->
+      <div class="form-panel" id="regPanel">
+        <div class="auth-head">
+          <h2>Hisob yarating ✨</h2>
+          <p>Bepul ro'yxatdan o'ting va to'liq himoyani boshlang</p>
+        </div>
+
+        <div class="social-btns">
+          <button class="social-btn" onclick="socialLogin('Google')"><span>🌐</span>Google</button>
+          <button class="social-btn" onclick="socialLogin('Telegram')"><span>✈️</span>Telegram</button>
+        </div>
+        <div class="divider">yoki email bilan</div>
+
+        <div class="alert" id="regAlert"></div>
+
+        <div class="field">
+          <label>To'liq ism</label>
+          <div class="field-wrap">
+            <span class="field-ico">👤</span>
+            <input type="text" class="finput" id="regName" placeholder="Ism Familiya">
+          </div>
+        </div>
+        <div class="field">
+          <label>Email manzil</label>
+          <div class="field-wrap">
+            <span class="field-ico">📧</span>
+            <input type="email" class="finput" id="regEmail" placeholder="sizning@email.uz">
+          </div>
+        </div>
+        <div class="field">
+          <label>Parol</label>
+          <div class="field-wrap">
+            <span class="field-ico">🔒</span>
+            <input type="password" class="finput" id="regPass" placeholder="••••••••"
+              oninput="checkStrength(this.value)"
+              onkeydown="if(event.key==='Enter')doRegister()">
+          </div>
+          <div class="strength-wrap" id="strengthWrap">
+            <div class="strength-bars">
+              <div class="sbar" id="s1"></div><div class="sbar" id="s2"></div>
+              <div class="sbar" id="s3"></div><div class="sbar" id="s4"></div>
+            </div>
+            <div class="strength-label" id="strengthLabel"></div>
+          </div>
+        </div>
+        <div class="terms">
+          Ro'yxatdan o'tish orqali <a href="#">Foydalanish shartlari</a> va
+          <a href="#">Maxfiylik siyosati</a>ga rozilik bildirasiz.
+        </div>
+        <button class="submit-btn" id="regBtn" onclick="doRegister()"><span>🚀</span>Hisob Yaratish</button>
+        <div class="auth-foot" style="margin-top:1.25rem">
+          Hisob bormi? <a href="#" onclick="switchTab('login')">Kirish →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script src="ai-navigator.js"></script>
+<script>
+// Tab switching
+function switchTab(tab) {
+  ['login','register'].forEach(t => {
+    document.getElementById(t==='login'?'tabLogin':'tabReg').classList.toggle('active', t===tab);
+    document.getElementById(t==='login'?'loginPanel':'regPanel').classList.toggle('active', t===tab);
+  });
+}
+
+// URL parametridan tab aniqlash
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('tab') === 'register') switchTab('register');
+
+// Oldingi foydalanuvchini ko'rsatish
+const savedUser = Auth.getUser();
+if (savedUser) {
+  const wb = document.getElementById('welcomeBack');
+  const wbAv = document.getElementById('wbAvatar');
+  const wbNm = document.getElementById('wbName');
+  if (wb && wbAv && wbNm) {
+    wb.classList.add('show');
+    wbAv.textContent = savedUser.avatar;
+    wbNm.textContent = savedUser.name;
+  }
+}
+
+// Already logged in — redirect
+if (Auth.isLoggedIn() && !urlParams.get('force')) {
+  const redirect = urlParams.get('redirect') || 'dashboard.html';
+  // Faqat 2 soniyadan keyin redirect
+  // window.location.href = redirect;
+}
+
+function showAlert(id, msg, type='error') {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = `alert ${type} show`;
+  setTimeout(() => el.className = 'alert', 4000);
+}
+
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  btn.disabled = loading;
+  btn.innerHTML = loading
+    ? '<span style="animation:spin 0.7s linear infinite;display:inline-block">⟳</span> Yuklanmoqda...'
+    : (btnId === 'loginBtn' ? '<span>⚡</span>Kirish' : '<span>🚀</span>Hisob Yaratish');
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  if (!email || !pass) { showAlert('loginAlert','Email va parolni kiriting'); return; }
+  setLoading('loginBtn', true);
+  await new Promise(r => setTimeout(r, 800));
+  const res = Auth.login(email, pass);
+  setLoading('loginBtn', false);
+  if (res.ok) {
+    showAlert('loginAlert', `✓ Xush kelibsiz, ${res.user.name}!`, 'success');
+    setTimeout(() => {
+      const redirect = urlParams.get('redirect') || 'dashboard.html';
+      window.location.href = redirect;
+    }, 1000);
+  } else {
+    showAlert('loginAlert', res.error || 'Kirish xatosi');
+  }
+}
+
+async function doRegister() {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass = document.getElementById('regPass').value;
+  if (!name || !email || !pass) { showAlert('regAlert','Barcha maydonlarni to\'ldiring'); return; }
+  if (pass.length < 6) { showAlert('regAlert','Parol kamida 6 ta belgi bo\'lishi kerak'); return; }
+  setLoading('regBtn', true);
+  await new Promise(r => setTimeout(r, 900));
+  const res = Auth.register(name, email, pass);
+  setLoading('regBtn', false);
+  if (res.ok) {
+    showAlert('regAlert', `✓ Hisob yaratildi! Xush kelibsiz, ${name}!`, 'success');
+    setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+  } else {
+    showAlert('regAlert', res.error || 'Ro\'yxat xatosi');
+  }
+}
+
+function checkStrength(val) {
+  const wrap = document.getElementById('strengthWrap');
+  if (!val) { wrap.classList.remove('show'); return; }
+  wrap.classList.add('show');
+  let score = 0;
+  if (val.length >= 8) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  const colors = ['var(--danger)','var(--warn)','var(--warn)','var(--safe)'];
+  const labels = ['Juda zaif','Zaif','O\'rtacha','Kuchli'];
+  for (let i=1; i<=4; i++) {
+    document.getElementById('s'+i).style.background = i<=score ? colors[score-1] : 'rgba(255,255,255,0.06)';
+  }
+  document.getElementById('strengthLabel').textContent = labels[score-1] || '';
+  document.getElementById('strengthLabel').style.color = colors[score-1] || 'var(--muted)';
+}
+
+function socialLogin(provider) {
+  const toast = document.getElementById('ai-toast');
+  if (toast) {
+    toast.innerHTML = `<div style="color:var(--text)">${provider} orqali kirish tez orada qo'shiladi! ✨</div>`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+}
+</script>
+</body>
+</html>
