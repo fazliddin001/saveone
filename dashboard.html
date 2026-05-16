@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — SAVEONE</title>
+<link rel="stylesheet" href="style.css">
+<style>
+body { padding-top:64px; }
+.dash { max-width:1200px; margin:0 auto; padding:2.5rem 2rem; position:relative; z-index:1; }
+.dash-header { margin-bottom:2rem; display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+.dash-header h1 { font-family:'Syne',sans-serif; font-size:1.75rem; font-weight:800; }
+.dash-header p { color:var(--muted); margin-top:4px; font-size:0.88rem; }
+.quick-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.qa-btn {
+  padding:7px 14px; border-radius:9px; font-size:0.78rem; font-weight:600;
+  border:1px solid var(--border); color:var(--muted); background:none;
+  cursor:pointer; font-family:'Space Grotesk'; transition:all 0.2s;
+  display:flex; align-items:center; gap:6px;
+}
+.qa-btn:hover { border-color:var(--p1); color:var(--p3); background:rgba(168,85,247,0.06); }
+
+/* STATUS BAR */
+.status-bar {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:10px 16px; border-radius:12px; margin-bottom:2rem;
+  background:rgba(52,211,153,0.05); border:1px solid rgba(52,211,153,0.15);
+  font-size:0.84rem;
+}
+.status-dot { width:8px; height:8px; border-radius:50%; background:var(--safe); box-shadow:0 0 8px var(--safe); animation:bdot 2s infinite; }
+
+/* KPI */
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; margin-bottom:2rem; }
+.kpi { padding:1.5rem; border-radius:var(--r-md); position:relative; overflow:hidden; }
+.kpi::before {
+  content:''; position:absolute; inset:0; opacity:0; transition:opacity 0.3s;
+  background:radial-gradient(circle at 10% 10%,rgba(168,85,247,0.07),transparent 60%);
+}
+.kpi:hover::before { opacity:1; }
+.kpi-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+.kpi-ico { font-size:1.3rem; }
+.kpi-trend { font-size:0.72rem; padding:3px 10px; border-radius:999px; font-weight:600; }
+.trend-up { background:rgba(52,211,153,0.1); color:var(--safe); }
+.trend-dn { background:rgba(248,113,113,0.1); color:var(--danger); }
+.kpi-n { font-family:'Syne',sans-serif; font-size:2rem; font-weight:800; }
+.kpi-l { font-size:0.78rem; color:var(--muted); margin-top:4px; }
+.kpi-spark { height:3px; background:rgba(255,255,255,0.05); border-radius:99px; margin-top:1rem; overflow:hidden; }
+.kpi-spark-f { height:100%; border-radius:99px; }
+
+/* MAIN GRID */
+.main-grid { display:grid; grid-template-columns:1fr 360px; gap:1.5rem; margin-bottom:2rem; }
+@media(max-width:900px){ .main-grid{ grid-template-columns:1fr; } }
+.panel { padding:1.5rem; border-radius:var(--r-md); }
+.panel-title { font-family:'Syne',sans-serif; font-weight:700; font-size:0.95rem; margin-bottom:1.25rem; display:flex; align-items:center; gap:8px; }
+
+/* CALLS */
+.call-item {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 13px; border-radius:12px; margin-bottom:8px;
+  background:rgba(255,255,255,0.02); border:1px solid var(--border);
+  transition:all 0.2s; cursor:pointer;
+}
+.call-item:hover { background:rgba(168,85,247,0.05); border-color:rgba(168,85,247,0.2); transform:translateX(3px); }
+.call-av { width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; border:1px solid; }
+.call-info { flex:1; }
+.call-num { font-size:0.88rem; font-weight:600; }
+.call-meta { font-size:0.76rem; color:var(--muted); margin-top:2px; }
+.call-badge { font-size:0.7rem; padding:3px 10px; border-radius:999px; font-weight:700; white-space:nowrap; }
+
+/* RADAR */
+.radar-wrap { text-align:center; }
+.score-ring-wrap { position:relative; width:160px; height:160px; margin:0.75rem auto 1rem; }
+.score-ring-wrap svg { transform:rotate(-90deg); }
+.score-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.score-n { font-family:'Syne',sans-serif; font-size:2.2rem; font-weight:800; color:var(--p1); }
+.score-l { font-size:0.72rem; color:var(--muted); margin-top:2px; }
+.score-items { display:flex; flex-direction:column; gap:8px; }
+.score-row { display:flex; align-items:center; justify-content:space-between; font-size:0.8rem; }
+.score-bar-w { width:70px; height:3px; background:rgba(255,255,255,0.06); border-radius:99px; overflow:hidden; }
+.score-bar-f { height:100%; border-radius:99px; background:linear-gradient(90deg,var(--p2),var(--p1)); }
+
+/* LIVE FEED */
+.live-feed { border-radius:var(--r-md); padding:1.25rem; }
+.live-title { display:flex; align-items:center; gap:8px; font-family:'Syne',sans-serif; font-weight:700; font-size:0.92rem; margin-bottom:1rem; }
+.live-dot { width:7px; height:7px; border-radius:50%; background:var(--danger); box-shadow:0 0 8px var(--danger); animation:bdot 1s infinite; }
+.feed-item { display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+.feed-item:last-child { border-bottom:none; }
+.feed-num { font-size:0.83rem; flex:1; font-weight:500; }
+.feed-type { font-size:0.7rem; color:var(--danger); font-weight:600; }
+.feed-time { font-size:0.7rem; color:var(--muted); }
+
+/* THREATS */
+.threat-list { display:flex; flex-direction:column; gap:10px; }
+.threat-row { display:flex; align-items:center; gap:12px; }
+.threat-name { font-size:0.84rem; flex:1; }
+.threat-bar-w { width:90px; height:3px; background:rgba(255,255,255,0.05); border-radius:99px; overflow:hidden; }
+.threat-bar-f { height:100%; border-radius:99px; }
+.threat-count { font-size:0.78rem; color:var(--muted); width:38px; text-align:right; }
+
+/* MAP SECTION */
+.map-section { margin-bottom:2rem; }
+.region-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:1rem; }
+.region-card {
+  padding:1rem; border-radius:12px; text-align:center; cursor:pointer;
+  transition:all 0.2s;
+}
+.region-card:hover { transform:translateY(-3px); border-color:rgba(168,85,247,0.3); }
+.region-n { font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:800; color:var(--danger); }
+.region-l { font-size:0.75rem; color:var(--muted); margin-top:3px; }
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<nav class="topnav">
+  <a href="index.html" class="logo"><div class="logo-ring">⚡</div><span>SAVE</span>ONE</a>
+  <div class="nav-links">
+    <a href="index.html">Tekshirish</a>
+    <a href="dashboard.html" class="active">Dashboard</a>
+    <a href="ai-assistant.html">AI Chat</a>
+    <a href="call-protection.html">Himoya</a>
+    <a href="education.html">Ta'lim</a>
+  </div>
+  <div class="nav-right">
+    <div id="navUser"></div>
+  </div>
+</nav>
+
+<script src="auth.js"></script>
+<script src="ai-navigator.js"></script>
+
+<div class="dash">
+  <div class="dash-header">
+    <div>
+      <h1>Bosh Sahifa 📊</h1>
+      <p>Xavfsizlik holatini real vaqtda kuzating</p>
+    </div>
+    <div class="quick-actions">
+      <button class="qa-btn" onclick="location.href='index.html#checker'">⚡ Raqam Tekshir</button>
+      <button class="qa-btn" onclick="location.href='ai-assistant.html'">🤖 AI Chat</button>
+      <button class="qa-btn" onclick="location.href='call-protection.html'">🛡️ Himoya</button>
+    </div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="status-bar">
+    <div class="status-dot"></div>
+    <span style="color:var(--safe);font-weight:600">Tizim ishlayapti</span>
+    <span style="color:var(--muted);margin-left:8px;font-size:0.78rem">Barcha modullar aktiv</span>
+    <span style="color:var(--muted);margin-left:auto" id="liveTime"></span>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-grid">
+    <div class="kpi glass">
+      <div class="kpi-top"><span class="kpi-ico">🚫</span><span class="kpi-trend trend-up">↑ +12%</span></div>
+      <div class="kpi-n" style="color:var(--danger)" id="kpi1">0</div>
+      <div class="kpi-l">Bloklangan bugun</div>
+      <div class="kpi-spark"><div class="kpi-spark-f" style="width:72%;background:linear-gradient(90deg,var(--danger),#f87171)"></div></div>
+    </div>
+    <div class="kpi glass">
+      <div class="kpi-top"><span class="kpi-ico">⚡</span><span class="kpi-trend trend-up">↑ +8%</span></div>
+      <div class="kpi-n" style="color:var(--p1)" id="kpi2">0</div>
+      <div class="kpi-l">Tahdidlar aniqlandi</div>
+      <div class="kpi-spark"><div class="kpi-spark-f" style="width:85%;background:linear-gradient(90deg,var(--p2),var(--p1))"></div></div>
+    </div>
+    <div class="kpi glass">
+      <div class="kpi-top"><span class="kpi-ico">🎯</span><span class="kpi-trend trend-up">Barqaror</span></div>
+      <div class="kpi-n" style="color:var(--safe)">96.4%</div>
+      <div class="kpi-l">AI aniqlash aniqligi</div>
+      <div class="kpi-spark"><div class="kpi-spark-f" style="width:96%;background:linear-gradient(90deg,var(--safe),#6ee7b7)"></div></div>
+    </div>
+    <div class="kpi glass">
+      <div class="kpi-top"><span class="kpi-ico">👥</span><span class="kpi-trend trend-up">↑ Beta</span></div>
+      <div class="kpi-n" style="color:var(--cyan)" id="kpi4">0</div>
+      <div class="kpi-l">Aktiv foydalanuvchi</div>
+      <div class="kpi-spark"><div class="kpi-spark-f" style="width:40%;background:linear-gradient(90deg,var(--cyan2),var(--cyan))"></div></div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+    <div>
+      <div class="panel glass" style="margin-bottom:1.25rem">
+        <div class="panel-title">📞 So'nggi Qo'ng'iroqlar</div>
+        <div id="callList"></div>
+      </div>
+      <div class="panel glass">
+        <div class="panel-title">📊 Tahdid Turlari</div>
+        <div class="threat-list" id="threatList"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:1.25rem">
+      <div class="panel glass radar-wrap">
+        <div class="panel-title" style="justify-content:center">🛡️ Xavfsizlik Balli</div>
+        <div class="score-ring-wrap">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(168,85,247,0.08)" stroke-width="8"/>
+            <circle cx="80" cy="80" r="68" fill="none" stroke="url(#scoreGrad)" stroke-width="8"
+              stroke-linecap="round" stroke-dasharray="427" stroke-dashoffset="120"/>
+            <defs>
+              <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#7c3aed"/>
+                <stop offset="50%" stop-color="#a855f7"/>
+                <stop offset="100%" stop-color="#22d3ee"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="score-center">
+            <div class="score-n">72</div>
+            <div class="score-l">/ 100</div>
+          </div>
+        </div>
+        <div style="font-size:0.82rem;color:var(--safe);font-weight:600;margin-bottom:1rem;text-align:center">✓ Yaxshi holat</div>
+        <div class="score-items">
+          <div class="score-row"><span>Hisob</span><div class="score-bar-w"><div class="score-bar-f" style="width:100%"></div></div><span style="color:var(--p3);font-weight:600;font-size:0.75rem">20/20</span></div>
+          <div class="score-row"><span>Xabardorlik</span><div class="score-bar-w"><div class="score-bar-f" style="width:73%"></div></div><span style="color:var(--p3);font-weight:600;font-size:0.75rem">22/30</span></div>
+          <div class="score-row"><span>Himoya</span><div class="score-bar-w"><div class="score-bar-f" style="width:80%"></div></div><span style="color:var(--p3);font-weight:600;font-size:0.75rem">20/25</span></div>
+          <div class="score-row"><span>Faoliyat</span><div class="score-bar-w"><div class="score-bar-f" style="width:40%;background:var(--warn)"></div></div><span style="color:var(--warn);font-weight:600;font-size:0.75rem">10/25</span></div>
+        </div>
+      </div>
+
+      <div class="panel glass live-feed">
+        <div class="live-title"><div class="live-dot"></div>Jonli Tahdid Lenti</div>
+        <div id="liveFeed"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGIONS -->
+  <div class="map-section">
+    <div class="panel-title glass" style="padding:1rem 1.25rem; border-radius:var(--r-md)">🗺️ Viloyatlar bo'yicha tahdidlar</div>
+    <div class="region-grid" style="margin-top:1rem">
+      <div class="region-card glass"><div class="region-n">342</div><div class="region-l">Toshkent</div></div>
+      <div class="region-card glass"><div class="region-n" style="color:var(--warn)">198</div><div class="region-l">Samarqand</div></div>
+      <div class="region-card glass"><div class="region-n" style="color:var(--warn)">156</div><div class="region-l">Farg'ona</div></div>
+      <div class="region-card glass"><div class="region-n" style="color:var(--safe)">89</div><div class="region-l">Andijon</div></div>
+      <div class="region-card glass"><div class="region-n" style="color:var(--safe)">67</div><div class="region-l">Namangan</div></div>
+      <div class="region-card glass"><div class="region-n" style="color:var(--safe)">43</div><div class="region-l">Buxoro</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Animated counters
+function countUp(el, target, duration=1500) {
+  let start=0, step=target/60;
+  const id = setInterval(() => {
+    start += step;
+    if (start >= target) { start=target; clearInterval(id); }
+    el.textContent = Math.floor(start).toLocaleString();
+  }, duration/60);
+}
+window.addEventListener('load', () => {
+  countUp(document.getElementById('kpi1'), 1247);
+  countUp(document.getElementById('kpi2'), 3891);
+  countUp(document.getElementById('kpi4'), 847);
+});
+
+// Live time
+function updateTime() {
+  document.getElementById('liveTime').textContent =
+    new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateTime, 1000); updateTime();
+
+// Calls
+const calls = [
+  {num:'+998 90 123 45 67', meta:'Toshkent • 2 daqiqa oldin', type:'SCAM', cls:'danger', ico:'🚫'},
+  {num:'+998 91 987 65 43', meta:'Samarqand • 8 daqiqa oldin', type:'PHISHING', cls:'danger', ico:'🚫'},
+  {num:'+7 999 123 45 67',  meta:'Rossiya • 15 daqiqa oldin', type:'SHUBHALI', cls:'warn', ico:'⚠️'},
+  {num:'+998 93 456 78 90', meta:'Farg\'ona • 23 daqiqa oldin', type:'XAVFSIZ', cls:'safe', ico:'✅'},
+  {num:'+998 97 328 76 66', meta:'Toshkent • 41 daqiqa oldin', type:'SCAM', cls:'danger', ico:'🚫'},
+];
+const callList = document.getElementById('callList');
+calls.forEach(c => {
+  callList.innerHTML += `
+    <div class="call-item">
+      <div class="call-av bg-${c.cls}">${c.ico}</div>
+      <div class="call-info">
+        <div class="call-num">${c.num}</div>
+        <div class="call-meta">${c.meta}</div>
+      </div>
+      <span class="call-badge bg-${c.cls} risk-${c.cls}">${c.type}</span>
+    </div>`;
+});
+
+// Threats
+const threats = [
+  {name:'Bank firibgarligi', pct:68, color:'var(--danger)', count:847},
+  {name:'Phishing SMS', pct:52, color:'var(--warn)', count:645},
+  {name:'Social engineering', pct:38, color:'var(--p1)', count:471},
+  {name:'Noma\'lum raqamlar', pct:25, color:'var(--cyan)', count:309},
+];
+const threatList = document.getElementById('threatList');
+threats.forEach(t => {
+  threatList.innerHTML += `
+    <div class="threat-row">
+      <div class="threat-name">${t.name}</div>
+      <div class="threat-bar-w"><div class="threat-bar-f" style="width:${t.pct}%;background:${t.color}"></div></div>
+      <div class="threat-count">${t.count}</div>
+    </div>`;
+});
+
+// Live feed
+const feedData = [
+  {num:'+998 97 321 45 88', type:'SCAM', time:'hozirgina'},
+  {num:'+7 916 234 56 78', type:'PHISHING', time:'1 daq'},
+  {num:'+998 90 111 22 33', type:'SPAM', time:'3 daq'},
+  {num:'+44 20 1234 5678', type:'NOMA\'LUM', time:'7 daq'},
+  {num:'+998 93 999 00 11', type:'SCAM', time:'12 daq'},
+];
+const liveFeed = document.getElementById('liveFeed');
+feedData.forEach(f => {
+  liveFeed.innerHTML += `
+    <div class="feed-item">
+      <div class="feed-num">${f.num}</div>
+      <div class="feed-type">${f.type}</div>
+      <div class="feed-time">${f.time}</div>
+    </div>`;
+});
+
+// Live feed animation — yangi tahdidlar qo'shish
+setInterval(() => {
+  const nums = ['+998 9','0 ','+998 9','1 ','+998 9','3 '];
+  const types = ['SCAM','PHISHING','SPAM'];
+  const num = '+998 9' + Math.floor(Math.random()*9) + ' ' + Math.floor(Math.random()*900+100) + ' ' + Math.floor(Math.random()*90+10) + ' ' + Math.floor(Math.random()*90+10);
+  const type = types[Math.floor(Math.random()*types.length)];
+  const newItem = document.createElement('div');
+  newItem.className = 'feed-item';
+  newItem.style.animation = 'fadeIn 0.3s ease';
+  newItem.innerHTML = `<div class="feed-num">${num}</div><div class="feed-type">${type}</div><div class="feed-time">hozirgina</div>`;
+  liveFeed.insertBefore(newItem, liveFeed.firstChild);
+  if (liveFeed.children.length > 6) liveFeed.removeChild(liveFeed.lastChild);
+}, 5000);
+</script>
+</body>
+</html>
