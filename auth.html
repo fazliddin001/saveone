@@ -273,6 +273,7 @@ body { min-height:100vh; display:flex; align-items:center; justify-content:cente
   </div>
 </div>
 
+<script src="security.js"></script>
 <script src="auth.js"></script>
 <script src="ai-navigator.js"></script>
 <script>
@@ -286,6 +287,14 @@ function switchTab(tab) {
 
 // URL parametridan tab aniqlash
 const urlParams = new URLSearchParams(window.location.search);
+
+// Ochiq redirect'dan himoya: faqat shu saytdagi sahifalar
+const SAFE_PAGES = ['index.html','dashboard.html','ai-assistant.html','call-protection.html','education.html','auth.html'];
+function safeRedirect(value) {
+  if (!value) return 'dashboard.html';
+  const page = value.replace(/^\/+/, '').split(/[?#]/)[0];
+  return SAFE_PAGES.includes(page) ? page : 'dashboard.html';
+}
 if (urlParams.get('tab') === 'register') switchTab('register');
 
 // Oldingi foydalanuvchini ko'rsatish
@@ -299,13 +308,6 @@ if (savedUser) {
     wbAv.textContent = savedUser.avatar;
     wbNm.textContent = savedUser.name;
   }
-}
-
-// Already logged in — redirect
-if (Auth.isLoggedIn() && !urlParams.get('force')) {
-  const redirect = urlParams.get('redirect') || 'dashboard.html';
-  // Faqat 2 soniyadan keyin redirect
-  // window.location.href = redirect;
 }
 
 function showAlert(id, msg, type='error') {
@@ -328,13 +330,12 @@ async function doLogin() {
   if (!email || !pass) { showAlert('loginAlert','Email va parolni kiriting'); return; }
   setLoading('loginBtn', true);
   await new Promise(r => setTimeout(r, 800));
-  const res = Auth.login(email, pass);
+  const res = await Auth.login(email, pass);
   setLoading('loginBtn', false);
   if (res.ok) {
     showAlert('loginAlert', `✓ Xush kelibsiz, ${res.user.name}!`, 'success');
     setTimeout(() => {
-      const redirect = urlParams.get('redirect') || 'dashboard.html';
-      window.location.href = redirect;
+      window.location.href = safeRedirect(urlParams.get('redirect'));
     }, 1000);
   } else {
     showAlert('loginAlert', res.error || 'Kirish xatosi');
@@ -346,10 +347,10 @@ async function doRegister() {
   const email = document.getElementById('regEmail').value.trim();
   const pass = document.getElementById('regPass').value;
   if (!name || !email || !pass) { showAlert('regAlert','Barcha maydonlarni to\'ldiring'); return; }
-  if (pass.length < 6) { showAlert('regAlert','Parol kamida 6 ta belgi bo\'lishi kerak'); return; }
+  if (pass.length < 8) { showAlert('regAlert','Parol kamida 8 ta belgi bo\'lishi kerak'); return; }
   setLoading('regBtn', true);
   await new Promise(r => setTimeout(r, 900));
-  const res = Auth.register(name, email, pass);
+  const res = await Auth.register(name, email, pass);
   setLoading('regBtn', false);
   if (res.ok) {
     showAlert('regAlert', `✓ Hisob yaratildi! Xush kelibsiz, ${name}!`, 'success');
@@ -380,7 +381,7 @@ function checkStrength(val) {
 function socialLogin(provider) {
   const toast = document.getElementById('ai-toast');
   if (toast) {
-    toast.innerHTML = `<div style="color:var(--text)">${provider} orqali kirish tez orada qo'shiladi! ✨</div>`;
+    toast.innerHTML = `<div style="color:var(--text)">${escapeHtml(provider)} orqali kirish tez orada qo'shiladi! ✨</div>`;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 3000);
   }
