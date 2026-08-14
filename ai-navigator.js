@@ -4,8 +4,6 @@
 // xatolarni o'zi tuzatadi, foydalanuvchini himoya qiladi.
 // ═══════════════════════════════════════════════════════
 
-const GEMINI_KEY = 'AIzaSyCgJGT--Dv104gEYZ8tY8Ed6UzS5wgEtxs';
-
 const AINavi = (() => {
   // ── Ichki holat ──
   let _thinking = false;
@@ -73,7 +71,7 @@ Kontekst:
     toast.innerHTML = `
       <div class="ai-think">
         <span style="animation:spin 1s linear infinite;display:inline-block">⚙️</span>
-        ${text || 'O\'ylayapman...'}
+        ${escapeHtml(text || 'O\'ylayapman...')}
       </div>
     `;
     toast.classList.add('show');
@@ -86,8 +84,8 @@ Kontekst:
 
     clearTimeout(_toastTimer);
     toast.innerHTML = `
-      ${thinkText ? `<div class="ai-think"><span>💭</span> ${thinkText}</div>` : ''}
-      <div style="color:var(--text)">${replyText}</div>
+      ${thinkText ? `<div class="ai-think"><span>💭</span> ${escapeHtml(thinkText)}</div>` : ''}
+      <div style="color:var(--text)">${escapeHtml(replyText)}</div>
     `;
     toast.classList.add('show');
 
@@ -101,7 +99,7 @@ Kontekst:
     const banner = getEl('heal-banner');
     if (!banner) return;
     clearTimeout(_healTimer);
-    banner.innerHTML = `⚠️ <span>${msg}</span>`;
+    banner.innerHTML = `⚠️ <span>${escapeHtml(msg)}</span>`;
     banner.classList.add('show');
     _healTimer = setTimeout(() => banner.classList.remove('show'), 6000);
   }
@@ -138,17 +136,12 @@ Kontekst:
       }
     };
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-    );
+    const { res, data } = await geminiRequest('gemini-2.0-flash', body);
 
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || `HTTP ${res.status}`);
+      throw new Error(data?.error?.message || `HTTP ${res.status}`);
     }
 
-    const data = await res.json();
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
 
     let parsed;
@@ -186,11 +179,12 @@ Kontekst:
 
       showReply(thinkPreview, result.reply || 'Tushundim!');
 
-      // Harakat bajarish
-      if (result.action === 'navigate' && result.target) {
+      // Harakat bajarish — target faqat ma'lum sahifalar/ID lar bo'lishi mumkin
+      if (result.action === 'navigate' && typeof result.target === 'string') {
         setTimeout(() => navigateTo(result.target), 1200);
-      } else if (result.action === 'scroll' && result.target) {
-        const el = document.getElementById(result.target) || document.querySelector(result.target);
+      } else if (result.action === 'scroll' && typeof result.target === 'string'
+                 && /^[A-Za-z][\w-]*$/.test(result.target)) {
+        const el = document.getElementById(result.target);
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
 

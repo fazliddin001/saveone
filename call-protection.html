@@ -128,6 +128,7 @@ body { padding-top:64px; }
   </div>
 </nav>
 
+<script src="security.js"></script>
 <script src="auth.js"></script>
 <script src="ai-navigator.js"></script>
 
@@ -206,8 +207,6 @@ body { padding-top:64px; }
 </div>
 
 <script>
-const GEMINI_KEY = 'AIzaSyCgJGT--Dv104gEYZ8tY8Ed6UzS5wgEtxs';
-
 const scenarios = {
   scam: {
     num:'+998 97 328 47 61', from:'Toshkent viloyati', type:'XAVFLI',
@@ -313,7 +312,7 @@ function handleAction(label) {
   // Harakat natijasini ko'rsatish
   const toast = document.getElementById('ai-toast');
   if (toast) {
-    toast.innerHTML = `<div style="color:var(--text)">${label} bajarildi ✓</div>`;
+    toast.innerHTML = `<div style="color:var(--text)">${escapeHtml(label)} bajarildi ✓</div>`;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 3000);
   }

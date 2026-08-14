@@ -219,10 +219,11 @@ body { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
   </div>
 </div>
 
+<script src="security.js"></script>
 <script src="auth.js"></script>
 <script src="ai-navigator.js"></script>
 <script>
-const GEMINI_KEY = 'AIzaSyCgJGT--Dv104gEYZ8tY8Ed6UzS5wgEtxs';
+const MAX_MSG_LEN = 2000;
 
 // Rejimlar
 const MODES = {
@@ -281,7 +282,8 @@ function addMsg(role, text, thinkText) {
   const d = document.createElement('div');
   d.className = `msg ${role}`;
 
-  const formatted = text
+  // Avval HTML escape, keyin faqat ruxsat etilgan markdown teglari
+  const formatted = escapeHtml(text)
     .replace(/\n/g,'<br>')
     .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
     .replace(/\*(.*?)\*/g,'<em>$1</em>')
@@ -289,7 +291,8 @@ function addMsg(role, text, thinkText) {
 
   let thinkHtml = '';
   if (thinkText && role === 'ai') {
-    thinkHtml = `<div class="think-block">${thinkText.substring(0,120)}${thinkText.length>120?'...':''}</div>`;
+    const think = escapeHtml(String(thinkText).substring(0,120));
+    thinkHtml = `<div class="think-block">${think}${String(thinkText).length>120?'...':''}</div>`;
   }
 
   d.innerHTML = `
@@ -319,7 +322,7 @@ function hideTyping() { const t=document.getElementById('typing'); if(t) t.remov
 
 async function send() {
   const inp = document.getElementById('msgin');
-  const text = inp.value.trim();
+  const text = inp.value.trim().slice(0, MAX_MSG_LEN);
   if (!text) return;
 
   document.getElementById('sugs').style.display = 'none';
@@ -333,20 +336,11 @@ async function send() {
     const modeConfig = MODES[currentMode];
     const contents = history.slice(-8); // oxirgi 8 ta
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-thinking-exp:generateContent?key=${GEMINI_KEY}`,
-      {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          system_instruction:{ parts:[{ text: modeConfig.system }] },
-          contents,
-          generationConfig:{ temperature:0.75, maxOutputTokens:600 }
-        })
-      }
-    );
-
-    const data = await res.json();
+    const { res, data } = await geminiRequest('gemini-2.0-flash-thinking-exp', {
+      system_instruction:{ parts:[{ text: modeConfig.system }] },
+      contents,
+      generationConfig:{ temperature:0.75, maxOutputTokens:600 }
+    });
 
     if (!res.ok) {
       // Fallback: oddiy model
@@ -368,7 +362,7 @@ async function send() {
     addMsg('ai', parsed.reply || 'Tushundim!', parsed.think);
 
     // Navigatsiya
-    if (parsed.navigate) {
+    if (typeof parsed.navigate === 'string') {
       setTimeout(() => {
         addMsg('ai', `▶️ ${parsed.navigate} sahifasiga o'tyapman...`);
         setTimeout(() => AINavi.navigate(parsed.navigate), 800);
@@ -386,19 +380,11 @@ async function send() {
 // Fallback: gemini-2.0-flash (thinking modeli ishlamasa)
 async function sendFallback(text, systemPrompt) {
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          system_instruction:{ parts:[{ text: systemPrompt }] },
-          contents: history.slice(-6),
-          generationConfig:{ temperature:0.7, maxOutputTokens:500, responseMimeType:'application/json' }
-        })
-      }
-    );
-    const data = await res.json();
+    const { data } = await geminiRequest('gemini-2.0-flash', {
+      system_instruction:{ parts:[{ text: systemPrompt }] },
+      contents: history.slice(-6),
+      generationConfig:{ temperature:0.7, maxOutputTokens:500, responseMimeType:'application/json' }
+    });
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     let parsed;
     try { parsed = JSON.parse(rawText); }
@@ -406,7 +392,7 @@ async function sendFallback(text, systemPrompt) {
     history.push({ role:'model', parts:[{ text: rawText }] });
     hideTyping();
     addMsg('ai', parsed.reply || 'Tushundim!', parsed.think);
-    if (parsed.navigate) setTimeout(() => AINavi.navigate(parsed.navigate), 1000);
+    if (typeof parsed.navigate === 'string') setTimeout(() => AINavi.navigate(parsed.navigate), 1000);
   } catch(e) {
     hideTyping();
     addMsg('ai','❌ Ulanish muammosi. Internetni tekshiring yoki biroz keyin urinib ko\'ring.');
