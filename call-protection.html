@@ -262,7 +262,13 @@ let simHistory = [];
 
 function simulate(type) {
   const s = scenarios[type];
+  if (!s) {
+    console.error('SAVEONE: noma\'lum simulyatsiya turi:', type);
+    if (typeof AINavi !== 'undefined') AINavi.heal(`"${type}" senariysi topilmadi.`);
+    return;
+  }
   const ui = document.getElementById('callUI');
+  if (!ui) { console.error('SAVEONE: callUI elementi topilmadi'); return; }
   ui.classList.add('show');
   ui.scrollIntoView({ behavior:'smooth', block:'center' });
 
@@ -321,6 +327,7 @@ function handleAction(label) {
 
 function renderHistory() {
   const hl = document.getElementById('histList');
+  if (!hl) { console.error('SAVEONE: histList elementi topilmadi'); return; }
   if (simHistory.length === 0) return;
   hl.innerHTML = simHistory.slice(0,5).map(h => `
     <div class="hist-item">

@@ -310,12 +310,14 @@ if (Auth.isLoggedIn() && !urlParams.get('force')) {
 
 function showAlert(id, msg, type='error') {
   const el = document.getElementById(id);
+  if (!el) { console.error('SAVEONE: alert elementi topilmadi:', id, msg); return; }
   el.textContent = msg; el.className = `alert ${type} show`;
   setTimeout(() => el.className = 'alert', 4000);
 }
 
 function setLoading(btnId, loading) {
   const btn = document.getElementById(btnId);
+  if (!btn) { console.error('SAVEONE: tugma topilmadi:', btnId); return; }
   btn.disabled = loading;
   btn.innerHTML = loading
     ? '<span style="animation:spin 0.7s linear infinite;display:inline-block">⟳</span> Yuklanmoqda...'
@@ -328,8 +330,18 @@ async function doLogin() {
   if (!email || !pass) { showAlert('loginAlert','Email va parolni kiriting'); return; }
   setLoading('loginBtn', true);
   await new Promise(r => setTimeout(r, 800));
-  const res = Auth.login(email, pass);
-  setLoading('loginBtn', false);
+
+  let res;
+  try {
+    res = Auth.login(email, pass);
+  } catch (err) {
+    console.error('SAVEONE: kirish xatosi:', err);
+    showAlert('loginAlert', `Kirish bajarilmadi: ${err.message}`);
+    return;
+  } finally {
+    setLoading('loginBtn', false);
+  }
+
   if (res.ok) {
     showAlert('loginAlert', `✓ Xush kelibsiz, ${res.user.name}!`, 'success');
     setTimeout(() => {
@@ -349,8 +361,18 @@ async function doRegister() {
   if (pass.length < 6) { showAlert('regAlert','Parol kamida 6 ta belgi bo\'lishi kerak'); return; }
   setLoading('regBtn', true);
   await new Promise(r => setTimeout(r, 900));
-  const res = Auth.register(name, email, pass);
-  setLoading('regBtn', false);
+
+  let res;
+  try {
+    res = Auth.register(name, email, pass);
+  } catch (err) {
+    console.error('SAVEONE: ro\'yxatdan o\'tish xatosi:', err);
+    showAlert('regAlert', `Ro'yxatdan o'tish bajarilmadi: ${err.message}`);
+    return;
+  } finally {
+    setLoading('regBtn', false);
+  }
+
   if (res.ok) {
     showAlert('regAlert', `✓ Hisob yaratildi! Xush kelibsiz, ${name}!`, 'success');
     setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);

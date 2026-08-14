@@ -246,6 +246,7 @@ body { padding-top:64px; }
 <script>
 // Animated counters
 function countUp(el, target, duration=1500) {
+  if (!el) { console.error('SAVEONE: hisoblagich elementi topilmadi (target:', target, ')'); return; }
   let start=0, step=target/60;
   const id = setInterval(() => {
     start += step;
@@ -260,11 +261,18 @@ window.addEventListener('load', () => {
 });
 
 // Live time
+let timeTimer = null;
 function updateTime() {
-  document.getElementById('liveTime').textContent =
+  const el = document.getElementById('liveTime');
+  if (!el) {
+    console.error('SAVEONE: liveTime elementi topilmadi — vaqt yangilanishi to\'xtatildi');
+    if (timeTimer) clearInterval(timeTimer);
+    return;
+  }
+  el.textContent =
     new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
-setInterval(updateTime, 1000); updateTime();
+timeTimer = setInterval(updateTime, 1000); updateTime();
 
 // Calls
 const calls = [
@@ -275,7 +283,9 @@ const calls = [
   {num:'+998 97 328 76 66', meta:'Toshkent • 41 daqiqa oldin', type:'SCAM', cls:'danger', ico:'🚫'},
 ];
 const callList = document.getElementById('callList');
+if (!callList) console.error('SAVEONE: callList elementi topilmadi');
 calls.forEach(c => {
+  if (!callList) return;
   callList.innerHTML += `
     <div class="call-item">
       <div class="call-av bg-${c.cls}">${c.ico}</div>
@@ -295,7 +305,9 @@ const threats = [
   {name:'Noma\'lum raqamlar', pct:25, color:'var(--cyan)', count:309},
 ];
 const threatList = document.getElementById('threatList');
+if (!threatList) console.error('SAVEONE: threatList elementi topilmadi');
 threats.forEach(t => {
+  if (!threatList) return;
   threatList.innerHTML += `
     <div class="threat-row">
       <div class="threat-name">${t.name}</div>
@@ -313,7 +325,9 @@ const feedData = [
   {num:'+998 93 999 00 11', type:'SCAM', time:'12 daq'},
 ];
 const liveFeed = document.getElementById('liveFeed');
+if (!liveFeed) console.error('SAVEONE: liveFeed elementi topilmadi');
 feedData.forEach(f => {
+  if (!liveFeed) return;
   liveFeed.innerHTML += `
     <div class="feed-item">
       <div class="feed-num">${f.num}</div>
@@ -323,7 +337,8 @@ feedData.forEach(f => {
 });
 
 // Live feed animation — yangi tahdidlar qo'shish
-setInterval(() => {
+const feedTimer = setInterval(() => {
+  if (!liveFeed) { clearInterval(feedTimer); return; }
   const nums = ['+998 9','0 ','+998 9','1 ','+998 9','3 '];
   const types = ['SCAM','PHISHING','SPAM'];
   const num = '+998 9' + Math.floor(Math.random()*9) + ' ' + Math.floor(Math.random()*900+100) + ' ' + Math.floor(Math.random()*90+10) + ' ' + Math.floor(Math.random()*90+10);

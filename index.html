@@ -433,6 +433,9 @@ function fillPhone(num) {
 }
 
 // ── Raqam tekshirish ──
+const MAX_CHECK_ATTEMPTS = 3;
+let checkAttempt = 0;
+
 async function checkPhone() {
   const raw = document.getElementById('phoneIn').value.trim();
   if (!raw) return;
@@ -446,7 +449,10 @@ async function checkPhone() {
   const msgs = ['AI ma\'lumotlarni tahlil qilmoqda...','Raqam tarixini tekshirmoqda...','Xavf darajasini hisoblamoqda...'];
   let mi = 0;
   const msgEl = document.getElementById('loadMsg');
-  const msgInt = setInterval(() => { msgEl.textContent = msgs[mi++ % msgs.length]; }, 900);
+  const msgInt = setInterval(() => {
+    if (!msgEl) { clearInterval(msgInt); return; }
+    msgEl.textContent = msgs[mi++ % msgs.length];
+  }, 900);
 
   try {
     const prompt = `Ushbu telefon raqamni O'zbekiston kontekstida tahlil qil: "${raw}"
@@ -481,25 +487,42 @@ Raqam tahlili uchun:
       }
     );
 
-    clearInterval(msgInt);
-    const data = await res.json();
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      console.error('SAVEONE: API javobi JSON emas:', parseErr);
+    }
 
-    if (!res.ok) throw new Error(data?.error?.message || 'API xatosi');
+    if (!res.ok) throw new Error(data?.error?.message || `API xatosi (HTTP ${res.status})`);
+    if (!data) throw new Error('API javobini o\'qib bo\'lmadi');
 
-    const raw2 = data.candidates[0].content.parts[0].text;
+    const raw2 = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!raw2) {
+      const reason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
+      throw new Error(reason ? `Tahlil olinmadi (${reason})` : 'API bo\'sh javob qaytardi');
+    }
+
     let result;
-    try { result = JSON.parse(raw2); }
-    catch { result = { risk:'UNKNOWN', score:50, label:"NOMA'LUM", emoji:'❓', region:'Noma\'lum', type:'Noma\'lum', reason:'Tahlil qilinmadi.', tips:[] }; }
+    try {
+      result = JSON.parse(raw2);
+    } catch (parseErr) {
+      // Xavfsizlik natijasini to'qib chiqarmaymiz — xatoni ko'rsatamiz
+      console.error('SAVEONE: tahlil JSON emas:', parseErr, raw2);
+      throw new Error('AI tahlilini o\'qib bo\'lmadi');
+    }
 
     // Natijani ko'rsatish
+    checkAttempt = 0;
     showResult(raw, result);
 
   } catch (err) {
-    clearInterval(msgInt);
-    // Self-heal
+    console.error('SAVEONE: raqam tekshirish xatosi:', err);
     document.getElementById('loadWrap').classList.remove('show');
-    showSelfHeal(err.message, raw);
     checkBtn.disabled = false;
+    showSelfHeal(err.message, raw);
+  } finally {
+    clearInterval(msgInt);
   }
 }
 
@@ -509,20 +532,21 @@ function showResult(phone, r) {
 
   const clsMap = { HIGH:'danger', MEDIUM:'warn', LOW:'safe', UNKNOWN:'warn' };
   const cls = clsMap[r.risk] || 'warn';
+  const score = Number.isFinite(Number(r.score)) ? Number(r.score) : 0;
 
   const rIcon = document.getElementById('rIcon');
-  rIcon.textContent = r.emoji;
+  rIcon.textContent = r.emoji || '❓';
   rIcon.className = `r-icon bg-${cls}`;
-  document.getElementById('rLabel').textContent = r.label;
+  document.getElementById('rLabel').textContent = r.label || 'NOMA\'LUM';
   document.getElementById('rLabel').className = `r-label risk-${cls}`;
   document.getElementById('rPhone').textContent = phone;
 
   const bar = document.getElementById('barFill');
   bar.className = `bar-fill bar-${cls}`;
-  setTimeout(() => { bar.style.width = r.score + '%'; }, 50);
+  setTimeout(() => { bar.style.width = score + '%'; }, 50);
 
   const rb = document.getElementById('reasonBox');
-  rb.textContent = r.reason;
+  rb.textContent = r.reason || 'Tahlil matni olinmadi.';
   rb.style.borderLeftColor = `var(--${cls})`;
 
   const tl = document.getElementById('tipsList');
@@ -530,7 +554,7 @@ function showResult(phone, r) {
     `<div class="tip"><div class="tip-dot"></div><span>${t}</span></div>`
   ).join('');
 
-  document.getElementById('cs1').textContent = r.score + '%';
+  document.getElementById('cs1').textContent = score + '%';
   document.getElementById('cs1').style.color = `var(--${cls})`;
   document.getElementById('cs2').textContent = r.region || '—';
   document.getElementById('cs3').textContent = r.type || '—';
@@ -539,17 +563,26 @@ function showResult(phone, r) {
 }
 
 function showSelfHeal(errMsg, phone) {
-  // Self-healing: xatoni foydalanuvchiga ko'rsatmasdan hal qilish
+  // Self-healing: cheklangan sonda qayta urinish, keyin xatoni ko'rsatish
   const banner = document.getElementById('heal-banner');
-  if (banner) {
-    banner.innerHTML = '🔄 <span>Ulanish muammosi. 3 soniyadan keyin qayta urinamiz...</span>';
+  if (!banner) return;
+
+  checkAttempt++;
+  if (checkAttempt >= MAX_CHECK_ATTEMPTS) {
+    checkAttempt = 0;
+    banner.innerHTML = `❌ <span>Tekshirish bajarilmadi: ${errMsg || 'noma\'lum xato'}. Internetni tekshirib, qayta urinib ko'ring.</span>`;
     banner.classList.add('show');
-    setTimeout(() => {
-      banner.classList.remove('show');
-      document.getElementById('phoneIn').value = phone;
-      checkPhone();
-    }, 3000);
+    setTimeout(() => banner.classList.remove('show'), 8000);
+    return;
   }
+
+  banner.innerHTML = `🔄 <span>Ulanish muammosi (${checkAttempt}/${MAX_CHECK_ATTEMPTS}). 3 soniyadan keyin qayta urinamiz...</span>`;
+  banner.classList.add('show');
+  setTimeout(() => {
+    banner.classList.remove('show');
+    document.getElementById('phoneIn').value = phone;
+    checkPhone();
+  }, 3000);
 }
 </script>
 </body>

@@ -2,11 +2,49 @@
 // localStorage asosida ishlaydi (demo uchun)
 // Keyinchalik Supabase bilan almashtiriladi
 
+const STORAGE = { user: 'saveone_user', users: 'saveone_users' };
+const STORAGE_ERROR = 'Brauzer xotirasi ishlamayapti — ma\'lumot saqlanmadi';
+
+// localStorage'dan JSON o'qish. Buzilgan yoki o'qilmaydigan qiymat
+// butun sahifani sindirmasligi kerak — log yozib fallback qaytaramiz.
+function readJSON(key, fallback) {
+  let raw;
+  try {
+    raw = localStorage.getItem(key);
+  } catch (err) {
+    console.error(`SAVEONE: localStorage o'qilmadi (${key}):`, err);
+    return fallback;
+  }
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error(`SAVEONE: buzilgan ma'lumot tozalandi (${key}):`, err);
+    try { localStorage.removeItem(key); } catch (rmErr) { console.error('SAVEONE: tozalash xatosi:', rmErr); }
+    return fallback;
+  }
+}
+
+function writeJSON(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return { ok: true };
+  } catch (err) {
+    console.error(`SAVEONE: localStorage yozilmadi (${key}):`, err);
+    return { ok: false, error: STORAGE_ERROR };
+  }
+}
+
+function readUsers() {
+  const users = readJSON(STORAGE.users, []);
+  return Array.isArray(users) ? users : [];
+}
+
 const Auth = {
   // Foydalanuvchini olish
   getUser() {
-    const u = localStorage.getItem('saveone_user');
-    return u ? JSON.parse(u) : null;
+    const u = readJSON(STORAGE.user, null);
+    return u && typeof u === 'object' ? u : null;
   },
 
   // Kirish tekshirish
@@ -16,14 +54,21 @@ const Auth = {
 
   // Ro'yxatdan o'tish
   register(name, email, password) {
-    const users = JSON.parse(localStorage.getItem('saveone_users') || '[]');
+    const users = readUsers();
     if (users.find(u => u.email === email)) {
       return { ok: false, error: 'Bu email allaqachon ro\'yxatdan o\'tgan' };
+    }
+    let encoded;
+    try {
+      encoded = btoa(password);
+    } catch (err) {
+      console.error('SAVEONE: parolni kodlash xatosi:', err);
+      return { ok: false, error: 'Parolda qo\'llab-quvvatlanmaydigan belgilar bor' };
     }
     const user = {
       id: Date.now().toString(),
       name, email,
-      password: btoa(password), // demo uchun oddiy encoding
+      password: encoded, // demo uchun oddiy encoding
       joinedAt: new Date().toISOString(),
       points: 0,
       checksCount: 0,
@@ -31,50 +76,69 @@ const Auth = {
       avatar: name.charAt(0).toUpperCase(),
     };
     users.push(user);
-    localStorage.setItem('saveone_users', JSON.stringify(users));
-    localStorage.setItem('saveone_user', JSON.stringify(user));
+    const usersWrite = writeJSON(STORAGE.users, users);
+    if (!usersWrite.ok) return usersWrite;
+    const sessionWrite = writeJSON(STORAGE.user, user);
+    if (!sessionWrite.ok) return sessionWrite;
     return { ok: true, user };
   },
 
   // Kirish
   login(email, password) {
-    const users = JSON.parse(localStorage.getItem('saveone_users') || '[]');
-    const user = users.find(u => u.email === email && u.password === btoa(password));
+    const users = readUsers();
+    let encoded;
+    try {
+      encoded = btoa(password);
+    } catch (err) {
+      console.error('SAVEONE: parolni kodlash xatosi:', err);
+      return { ok: false, error: 'Parolda qo\'llab-quvvatlanmaydigan belgilar bor' };
+    }
+    const user = users.find(u => u.email === email && u.password === encoded);
     if (!user) return { ok: false, error: 'Email yoki parol noto\'g\'ri' };
-    localStorage.setItem('saveone_user', JSON.stringify(user));
+    const sessionWrite = writeJSON(STORAGE.user, user);
+    if (!sessionWrite.ok) return sessionWrite;
     return { ok: true, user };
   },
 
   // Chiqish
   logout() {
-    localStorage.removeItem('saveone_user');
+    try {
+      localStorage.removeItem(STORAGE.user);
+    } catch (err) {
+      console.error('SAVEONE: sessiyani tozalash xatosi:', err);
+    }
     window.location.href = 'index.html';
   },
 
   // Foydalanuvchini yangilash
   updateUser(updates) {
     const user = this.getUser();
-    if (!user) return;
+    if (!user) return { ok: false, error: 'Foydalanuvchi tizimga kirmagan' };
     const updated = { ...user, ...updates };
-    localStorage.setItem('saveone_user', JSON.stringify(updated));
+    const sessionWrite = writeJSON(STORAGE.user, updated);
+    if (!sessionWrite.ok) return sessionWrite;
     // users arrayni ham yangilash
-    const users = JSON.parse(localStorage.getItem('saveone_users') || '[]');
+    const users = readUsers();
     const idx = users.findIndex(u => u.id === user.id);
-    if (idx !== -1) { users[idx] = updated; localStorage.setItem('saveone_users', JSON.stringify(users)); }
-    return updated;
+    if (idx !== -1) {
+      users[idx] = updated;
+      const usersWrite = writeJSON(STORAGE.users, users);
+      if (!usersWrite.ok) return usersWrite;
+    }
+    return { ok: true, user: updated };
   },
 
   // Ball qo'shish
   addPoints(pts) {
     const user = this.getUser();
-    if (!user) return;
+    if (!user) return { ok: false, error: 'Foydalanuvchi tizimga kirmagan' };
     return this.updateUser({ points: (user.points || 0) + pts });
   },
 
   // Tekshirishlar sonini oshirish
   addCheck() {
     const user = this.getUser();
-    if (!user) return;
+    if (!user) return { ok: false, error: 'Foydalanuvchi tizimga kirmagan' };
     return this.updateUser({ checksCount: (user.checksCount || 0) + 1 });
   },
 
@@ -93,7 +157,7 @@ function renderNavUser() {
   const container = document.getElementById('navUser');
   if (!container) return;
 
-  if (user) {
+  if (user && user.name) {
     container.innerHTML = `
       <div style="display:flex;align-items:center;gap:10px">
         <div style="
@@ -102,10 +166,10 @@ function renderNavUser() {
           display:flex;align-items:center;justify-content:center;
           font-size:0.85rem;font-weight:700;color:#fff;
           box-shadow:0 0 12px rgba(168,85,247,0.35)
-        ">${user.avatar}</div>
+        ">${user.avatar || user.name.charAt(0).toUpperCase()}</div>
         <div>
           <div style="font-size:0.82rem;font-weight:600">${user.name}</div>
-          <div style="font-size:0.7rem;color:var(--p1)">⭐ ${user.points} ball</div>
+          <div style="font-size:0.7rem;color:var(--p1)">⭐ ${user.points || 0} ball</div>
         </div>
         <button onclick="Auth.logout()" style="
           background:none;border:1px solid var(--border);color:var(--muted);

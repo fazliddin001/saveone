@@ -13,7 +13,9 @@ const AINavi = (() => {
   let _healTimer = null;
   let _barVisible = true;
   let _sessionContext = [];
-  let _errorCount = 0;
+
+  const MAX_ATTEMPTS = 3;
+  const RETRY_DELAY_MS = 1500;
 
   // ── Sahifalar xaritasi ──
   const PAGES = {
@@ -52,7 +54,11 @@ Kontekst:
   // ── Sahifalar o'rtasida smooth transition ──
   function navigateTo(page) {
     const info = PAGES[page];
-    if (!info) return;
+    if (!info) {
+      console.error('SAVEONE: noma\'lum sahifa:', page);
+      showHeal(`"${page}" sahifasi topilmadi.`);
+      return;
+    }
 
     const overlay = getEl('page-transition');
     if (overlay) {
@@ -106,31 +112,15 @@ Kontekst:
     _healTimer = setTimeout(() => banner.classList.remove('show'), 6000);
   }
 
-  // ── Xatoni o'zi tuzatish ──
-  async function selfHeal(error, originalQuery) {
-    _errorCount++;
-    if (_errorCount > 3) {
-      showHeal('API bilan bog\'lanishda muammo. Internetni tekshiring.');
-      _errorCount = 0;
-      return;
-    }
-
-    showHeal(`Xatolik aniqlandi. Qayta urinilmoqda... (${_errorCount}/3)`);
-
-    // 1.5 soniyadan keyin qayta urinish
-    await new Promise(r => setTimeout(r, 1500));
-    return askAI(originalQuery, true); // retry=true
-  }
-
   // ── Gemini API chaqiruvi ──
-  async function callGemini(userMsg, isRetry = false) {
-    // Kontekstni saqlab borish (oxirgi 6 ta)
-    _sessionContext.push({ role: 'user', parts: [{ text: userMsg }] });
-    if (_sessionContext.length > 6) _sessionContext = _sessionContext.slice(-6);
+  async function callGemini(userMsg) {
+    // Kontekstni saqlab borish (oxirgi 6 ta). So'rov muvaffaqiyatli
+    // bo'lmasa kontekst o'zgarmasligi kerak — shuning uchun nusxada ishlaymiz.
+    const contents = [..._sessionContext, { role: 'user', parts: [{ text: userMsg }] }].slice(-6);
 
     const body = {
       system_instruction: { parts: [{ text: SYSTEM }] },
-      contents: _sessionContext,
+      contents,
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 300,
@@ -144,30 +134,79 @@ Kontekst:
     );
 
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || `HTTP ${res.status}`);
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const errData = await res.json();
+        errMsg = errData?.error?.message || errMsg;
+      } catch (err) {
+        console.error('SAVEONE: API xato javobi o\'qilmadi:', err);
+      }
+      throw new Error(errMsg);
     }
 
-    const data = await res.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    let data;
+    try {
+      data = await res.json();
+    } catch (err) {
+      throw new Error(`API javobi JSON emas: ${err.message}`);
+    }
+
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      const reason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
+      throw new Error(reason ? `Javob olinmadi (${reason})` : 'API bo\'sh javob qaytardi');
+    }
 
     let parsed;
     try {
       parsed = JSON.parse(rawText);
-    } catch {
+    } catch (err) {
       // JSON parse xatosi — oddiy matn sifatida qaytarish
+      console.warn('SAVEONE: model javobi JSON emas, matn sifatida ishlatiladi:', err.message);
       parsed = { think: '', reply: rawText, action: 'none', confidence: 0.8 };
     }
 
-    // Model javobini kontekstga qo'shish
-    _sessionContext.push({ role: 'model', parts: [{ text: rawText }] });
+    // Model javobini kontekstga qo'shish (faqat muvaffaqiyatli so'rovdan keyin)
+    _sessionContext = [...contents, { role: 'model', parts: [{ text: rawText }] }].slice(-6);
 
     return parsed;
   }
 
+  // ── Natijadagi harakatni bajarish ──
+  function applyResult(result) {
+    const thinkPreview = result.think
+      ? result.think.substring(0, 60) + (result.think.length > 60 ? '...' : '')
+      : '';
+
+    showReply(thinkPreview, result.reply || 'Tushundim!');
+
+    if (result.action === 'navigate' && result.target) {
+      setTimeout(() => navigateTo(result.target), 1200);
+      return;
+    }
+
+    if (result.action === 'scroll' && result.target) {
+      let el = document.getElementById(result.target);
+      if (!el) {
+        try {
+          el = document.querySelector(result.target);
+        } catch (err) {
+          console.error('SAVEONE: noto\'g\'ri scroll selektori:', result.target, err);
+        }
+      }
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        console.warn('SAVEONE: scroll target topilmadi:', result.target);
+      }
+    }
+  }
+
   // ── Asosiy AI so'rov funksiyasi ──
-  async function askAI(query, isRetry = false) {
-    if (_thinking) return;
+  // Xato bo'lsa MAX_ATTEMPTS marta qayta uriniladi; oxirgi xato
+  // foydalanuvchiga ko'rsatiladi va konsolga yoziladi.
+  async function askAI(query) {
+    if (_thinking) return null;
     _thinking = true;
 
     const input = getEl('ai-input');
@@ -176,27 +215,27 @@ Kontekst:
     showThinking('Tahlil qilyapman...');
 
     try {
-      const result = await callGemini(query, isRetry);
-      _errorCount = 0; // muvaffaqiyat — errorCount ni reset
-
-      // fikrlash jarayonini ko'rsat (qisqartirilgan)
-      const thinkPreview = result.think
-        ? result.think.substring(0, 60) + (result.think.length > 60 ? '...' : '')
-        : '';
-
-      showReply(thinkPreview, result.reply || 'Tushundim!');
-
-      // Harakat bajarish
-      if (result.action === 'navigate' && result.target) {
-        setTimeout(() => navigateTo(result.target), 1200);
-      } else if (result.action === 'scroll' && result.target) {
-        const el = document.getElementById(result.target) || document.querySelector(result.target);
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      let lastError;
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          const result = await callGemini(query);
+          applyResult(result);
+          return result;
+        } catch (err) {
+          lastError = err;
+          console.error(`SAVEONE AI xato (urinish ${attempt}/${MAX_ATTEMPTS}):`, err);
+          if (attempt < MAX_ATTEMPTS) {
+            showHeal(`Xatolik aniqlandi. Qayta urinilmoqda... (${attempt}/${MAX_ATTEMPTS})`);
+            showThinking('Qayta urinyapman...');
+            await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+          }
+        }
       }
 
-    } catch (err) {
-      console.warn('SAVEONE AI xato:', err.message);
-      await selfHeal(err.message, query);
+      const msg = lastError?.message || 'noma\'lum xato';
+      showHeal(`API bilan bog'lanmadi: ${msg}`);
+      showReply('', `❌ So'rov bajarilmadi: ${msg}. Internetni tekshirib, qayta urinib ko'ring.`);
+      return null;
     } finally {
       _thinking = false;
       if (input) input.disabled = false;
@@ -281,11 +320,24 @@ Kontekst:
     'himoya': () => navigateTo('himoya'),
     "ta'lim": () => navigateTo('talim'),
     'kirish': () => navigateTo('kirish'),
-    'logout': () => { if (typeof Auth !== 'undefined') Auth.logout(); },
+    'logout': () => {
+      if (typeof Auth === 'undefined') {
+        console.error('SAVEONE: Auth yuklanmagan — chiqish bajarilmadi');
+        showHeal('Chiqish imkoni bo\'lmadi. Sahifani yangilang.');
+        return;
+      }
+      Auth.logout();
+    },
   };
 
   // ── Ishga tushirish ──
   function init() {
+    // Ushlanmagan async xatolar jimgina yo'qolmasligi kerak
+    window.addEventListener('unhandledrejection', (e) => {
+      console.error('SAVEONE: ushlanmagan promise xatosi:', e.reason);
+      showHeal('Kutilmagan xatolik yuz berdi. Qayta urinib ko\'ring.');
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
       createAIBar();
 
@@ -331,7 +383,10 @@ Kontekst:
         }
       }
 
-      askAI(query);
+      askAI(query).catch(err => {
+        console.error('SAVEONE: AI so\'rovi kutilmaganda uzildi:', err);
+        showHeal('Kutilmagan xatolik yuz berdi. Qayta urinib ko\'ring.');
+      });
     },
     navigate: navigateTo,
     toggle: toggleBar,
