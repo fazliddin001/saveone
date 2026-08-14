@@ -273,6 +273,8 @@ body { min-height:100vh; display:flex; align-items:center; justify-content:cente
   </div>
 </div>
 
+<script src="gemini.js"></script>
+<script src="ui.js"></script>
 <script src="auth.js"></script>
 <script src="ai-navigator.js"></script>
 <script>
@@ -318,7 +320,7 @@ function setLoading(btnId, loading) {
   const btn = document.getElementById(btnId);
   btn.disabled = loading;
   btn.innerHTML = loading
-    ? '<span style="animation:spin 0.7s linear infinite;display:inline-block">⟳</span> Yuklanmoqda...'
+    ? `${UI.spinIcon()} Yuklanmoqda...`
     : (btnId === 'loginBtn' ? '<span>⚡</span>Kirish' : '<span>🚀</span>Hisob Yaratish');
 }
 
@@ -378,12 +380,7 @@ function checkStrength(val) {
 }
 
 function socialLogin(provider) {
-  const toast = document.getElementById('ai-toast');
-  if (toast) {
-    toast.innerHTML = `<div style="color:var(--text)">${provider} orqali kirish tez orada qo'shiladi! ✨</div>`;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 3000);
-  }
+  UI.toastText(`${provider} orqali kirish tez orada qo'shiladi! ✨`);
 }
 </script>
 </body>

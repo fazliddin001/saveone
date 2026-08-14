@@ -113,22 +113,13 @@ body { padding-top:64px; }
 <div class="orb orb1"></div>
 <div class="orb orb2"></div>
 
-<nav class="topnav">
-  <a href="index.html" class="logo"><div class="logo-ring">⚡</div><span>SAVE</span>ONE</a>
-  <div class="nav-links">
-    <a href="index.html">Tekshirish</a>
-    <a href="dashboard.html" class="active">Dashboard</a>
-    <a href="ai-assistant.html">AI Chat</a>
-    <a href="call-protection.html">Himoya</a>
-    <a href="education.html">Ta'lim</a>
-  </div>
-  <div class="nav-right">
-    <div id="navUser"></div>
-  </div>
-</nav>
+<nav class="topnav" id="topnav"></nav>
 
+<script src="gemini.js"></script>
+<script src="ui.js"></script>
 <script src="auth.js"></script>
 <script src="ai-navigator.js"></script>
+<script>UI.renderNav({ active:'dashboard' });</script>
 
 <div class="dash">
   <div class="dash-header">
@@ -245,24 +236,15 @@ body { padding-top:64px; }
 
 <script>
 // Animated counters
-function countUp(el, target, duration=1500) {
-  let start=0, step=target/60;
-  const id = setInterval(() => {
-    start += step;
-    if (start >= target) { start=target; clearInterval(id); }
-    el.textContent = Math.floor(start).toLocaleString();
-  }, duration/60);
-}
 window.addEventListener('load', () => {
-  countUp(document.getElementById('kpi1'), 1247);
-  countUp(document.getElementById('kpi2'), 3891);
-  countUp(document.getElementById('kpi4'), 847);
+  UI.countUp('kpi1', 1247);
+  UI.countUp('kpi2', 3891);
+  UI.countUp('kpi4', 847);
 });
 
 // Live time
 function updateTime() {
-  document.getElementById('liveTime').textContent =
-    new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('liveTime').textContent = UI.formatTime(true);
 }
 setInterval(updateTime, 1000); updateTime();
 
@@ -274,18 +256,15 @@ const calls = [
   {num:'+998 93 456 78 90', meta:'Farg\'ona • 23 daqiqa oldin', type:'XAVFSIZ', cls:'safe', ico:'✅'},
   {num:'+998 97 328 76 66', meta:'Toshkent • 41 daqiqa oldin', type:'SCAM', cls:'danger', ico:'🚫'},
 ];
-const callList = document.getElementById('callList');
-calls.forEach(c => {
-  callList.innerHTML += `
-    <div class="call-item">
-      <div class="call-av bg-${c.cls}">${c.ico}</div>
-      <div class="call-info">
-        <div class="call-num">${c.num}</div>
-        <div class="call-meta">${c.meta}</div>
-      </div>
-      <span class="call-badge bg-${c.cls} risk-${c.cls}">${c.type}</span>
-    </div>`;
-});
+UI.renderList('callList', calls, c => `
+  <div class="call-item">
+    <div class="call-av bg-${c.cls}">${c.ico}</div>
+    <div class="call-info">
+      <div class="call-num">${c.num}</div>
+      <div class="call-meta">${c.meta}</div>
+    </div>
+    <span class="call-badge bg-${c.cls} risk-${c.cls}">${c.type}</span>
+  </div>`);
 
 // Threats
 const threats = [
@@ -294,15 +273,12 @@ const threats = [
   {name:'Social engineering', pct:38, color:'var(--p1)', count:471},
   {name:'Noma\'lum raqamlar', pct:25, color:'var(--cyan)', count:309},
 ];
-const threatList = document.getElementById('threatList');
-threats.forEach(t => {
-  threatList.innerHTML += `
-    <div class="threat-row">
-      <div class="threat-name">${t.name}</div>
-      <div class="threat-bar-w"><div class="threat-bar-f" style="width:${t.pct}%;background:${t.color}"></div></div>
-      <div class="threat-count">${t.count}</div>
-    </div>`;
-});
+UI.renderList('threatList', threats, t => `
+  <div class="threat-row">
+    <div class="threat-name">${t.name}</div>
+    <div class="threat-bar-w"><div class="threat-bar-f" style="width:${t.pct}%;background:${t.color}"></div></div>
+    <div class="threat-count">${t.count}</div>
+  </div>`);
 
 // Live feed
 const feedData = [
@@ -313,18 +289,15 @@ const feedData = [
   {num:'+998 93 999 00 11', type:'SCAM', time:'12 daq'},
 ];
 const liveFeed = document.getElementById('liveFeed');
-feedData.forEach(f => {
-  liveFeed.innerHTML += `
-    <div class="feed-item">
-      <div class="feed-num">${f.num}</div>
-      <div class="feed-type">${f.type}</div>
-      <div class="feed-time">${f.time}</div>
-    </div>`;
-});
+UI.renderList(liveFeed, feedData, f => `
+  <div class="feed-item">
+    <div class="feed-num">${f.num}</div>
+    <div class="feed-type">${f.type}</div>
+    <div class="feed-time">${f.time}</div>
+  </div>`);
 
 // Live feed animation — yangi tahdidlar qo'shish
 setInterval(() => {
-  const nums = ['+998 9','0 ','+998 9','1 ','+998 9','3 '];
   const types = ['SCAM','PHISHING','SPAM'];
   const num = '+998 9' + Math.floor(Math.random()*9) + ' ' + Math.floor(Math.random()*900+100) + ' ' + Math.floor(Math.random()*90+10) + ' ' + Math.floor(Math.random()*90+10);
   const type = types[Math.floor(Math.random()*types.length)];

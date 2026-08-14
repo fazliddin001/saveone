@@ -200,18 +200,7 @@
 <div class="orb orb2"></div>
 <div class="orb orb3"></div>
 
-<nav class="topnav">
-  <a href="index.html" class="logo">
-    <div class="logo-ring">⚡</div><span>SAVE</span>ONE
-  </a>
-  <div class="nav-links">
-    <a href="#checker" class="active">Tekshirish</a>
-    <a href="#features">Imkoniyatlar</a>
-    <a href="#how">Jarayon</a>
-    <a href="education.html">Ta'lim</a>
-  </div>
-  <div class="nav-right" id="navUser"></div>
-</nav>
+<nav class="topnav" id="topnav"></nav>
 
 <!-- HERO -->
 <section class="hero">
@@ -398,10 +387,20 @@
   <p style="margin-top:6px;opacity:0.5">Ctrl+Space → AI Yordamchi</p>
 </footer>
 
+<script src="gemini.js"></script>
+<script src="ui.js"></script>
 <script src="auth.js"></script>
 <script src="ai-navigator.js"></script>
 <script>
-const GEMINI_KEY = 'AIzaSyCgJGT--Dv104gEYZ8tY8Ed6UzS5wgEtxs';
+UI.renderNav({
+  active: '#checker',
+  links: [
+    { href:'#checker',       label:'Tekshirish' },
+    { href:'#features',      label:'Imkoniyatlar' },
+    { href:'#how',           label:'Jarayon' },
+    { href:'education.html', label:"Ta'lim" },
+  ],
+});
 
 // ── Particles ──
 function createParticles() {
@@ -469,27 +468,20 @@ Raqam tahlili uchun:
 - Boshqa xalqaro: ehtiyot bo'lish kerak
 - Noma'lum raqamlar: NOMA'LUM kategoriya`;
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          contents:[{role:'user',parts:[{text:prompt}]}],
-          generationConfig:{ temperature:0.3, maxOutputTokens:400, responseMimeType:'application/json' }
-        })
-      }
-    );
+    const { ok, raw: rawText, error } = await Gemini.generate({
+      prompt,
+      temperature: 0.3,
+      maxOutputTokens: 400,
+    });
 
     clearInterval(msgInt);
-    const data = await res.json();
 
-    if (!res.ok) throw new Error(data?.error?.message || 'API xatosi');
+    if (!ok) throw new Error(error || 'API xatosi');
 
-    const raw2 = data.candidates[0].content.parts[0].text;
-    let result;
-    try { result = JSON.parse(raw2); }
-    catch { result = { risk:'UNKNOWN', score:50, label:"NOMA'LUM", emoji:'❓', region:'Noma\'lum', type:'Noma\'lum', reason:'Tahlil qilinmadi.', tips:[] }; }
+    const result = Gemini.parseJSON(rawText, {
+      risk:'UNKNOWN', score:50, label:"NOMA'LUM", emoji:'❓',
+      region:'Noma\'lum', type:'Noma\'lum', reason:'Tahlil qilinmadi.', tips:[],
+    });
 
     // Natijani ko'rsatish
     showResult(raw, result);
@@ -507,8 +499,7 @@ function showResult(phone, r) {
   document.getElementById('loadWrap').classList.remove('show');
   document.getElementById('checkBtn').disabled = false;
 
-  const clsMap = { HIGH:'danger', MEDIUM:'warn', LOW:'safe', UNKNOWN:'warn' };
-  const cls = clsMap[r.risk] || 'warn';
+  const cls = UI.riskClass(r.risk);
 
   const rIcon = document.getElementById('rIcon');
   rIcon.textContent = r.emoji;
@@ -525,10 +516,9 @@ function showResult(phone, r) {
   rb.textContent = r.reason;
   rb.style.borderLeftColor = `var(--${cls})`;
 
-  const tl = document.getElementById('tipsList');
-  tl.innerHTML = (r.tips || []).map(t =>
+  UI.renderList('tipsList', r.tips, t =>
     `<div class="tip"><div class="tip-dot"></div><span>${t}</span></div>`
-  ).join('');
+  );
 
   document.getElementById('cs1').textContent = r.score + '%';
   document.getElementById('cs1').style.color = `var(--${cls})`;
