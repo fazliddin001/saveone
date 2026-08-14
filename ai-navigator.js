@@ -4,12 +4,9 @@
 // xatolarni o'zi tuzatadi, foydalanuvchini himoya qiladi.
 // ═══════════════════════════════════════════════════════
 
-const GEMINI_KEY = 'AIzaSyCgJGT--Dv104gEYZ8tY8Ed6UzS5wgEtxs';
-
 const AINavi = (() => {
   // ── Ichki holat ──
   let _thinking = false;
-  let _toastTimer = null;
   let _healTimer = null;
   let _barVisible = true;
   let _sessionContext = [];
@@ -47,7 +44,7 @@ Kontekst:
 - Xato bo'lsa, "Bir daqiqa, tuzatyapman..." de va qayta urining`;
 
   // ── DOM elementlari ──
-  const getEl = (id) => document.getElementById(id);
+  const getEl = UI.$;
 
   // ── Sahifalar o'rtasida smooth transition ──
   function navigateTo(page) {
@@ -68,32 +65,18 @@ Kontekst:
 
   // ── AI fikr ko'rsatish (thinking animation) ──
   function showThinking(text) {
-    const toast = getEl('ai-toast');
-    if (!toast) return;
-    toast.innerHTML = `
-      <div class="ai-think">
-        <span style="animation:spin 1s linear infinite;display:inline-block">⚙️</span>
-        ${text || 'O\'ylayapman...'}
-      </div>
-    `;
-    toast.classList.add('show');
+    UI.toast(
+      `<div class="ai-think">${UI.spinIcon('⚙️')} ${text || 'O\'ylayapman...'}</div>`,
+      0
+    );
   }
 
   // ── AI javob ko'rsatish ──
   function showReply(thinkText, replyText) {
-    const toast = getEl('ai-toast');
-    if (!toast) return;
-
-    clearTimeout(_toastTimer);
-    toast.innerHTML = `
+    UI.toast(`
       ${thinkText ? `<div class="ai-think"><span>💭</span> ${thinkText}</div>` : ''}
       <div style="color:var(--text)">${replyText}</div>
-    `;
-    toast.classList.add('show');
-
-    _toastTimer = setTimeout(() => {
-      toast.classList.remove('show');
-    }, 5000);
+    `, 5000);
   }
 
   // ── Self-healing banner ──
@@ -128,36 +111,17 @@ Kontekst:
     _sessionContext.push({ role: 'user', parts: [{ text: userMsg }] });
     if (_sessionContext.length > 6) _sessionContext = _sessionContext.slice(-6);
 
-    const body = {
-      system_instruction: { parts: [{ text: SYSTEM }] },
+    const { ok, raw, error } = await Gemini.generate({
+      system: SYSTEM,
       contents: _sessionContext,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 300,
-        responseMimeType: 'application/json',
-      }
-    };
+      temperature: 0.7,
+      maxOutputTokens: 300,
+    });
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-    );
+    if (!ok) throw new Error(error);
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || `HTTP ${res.status}`);
-    }
-
-    const data = await res.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-
-    let parsed;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      // JSON parse xatosi — oddiy matn sifatida qaytarish
-      parsed = { think: '', reply: rawText, action: 'none', confidence: 0.8 };
-    }
+    const rawText = raw || '{}';
+    const parsed = Gemini.parseJSON(rawText, { think: '', reply: rawText, action: 'none', confidence: 0.8 });
 
     // Model javobini kontekstga qo'shish
     _sessionContext.push({ role: 'model', parts: [{ text: rawText }] });

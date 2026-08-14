@@ -117,19 +117,13 @@ body { padding-top:64px; }
 <div class="orb orb1"></div>
 <div class="orb orb2"></div>
 
-<nav class="topnav">
-  <a href="index.html" class="logo"><div class="logo-ring">⚡</div><span>SAVE</span>ONE</a>
-  <div class="nav-links">
-    <a href="index.html">Tekshirish</a>
-    <a href="dashboard.html">Dashboard</a>
-    <a href="ai-assistant.html">AI Chat</a>
-    <a href="call-protection.html" class="active">Himoya</a>
-    <a href="education.html">Ta'lim</a>
-  </div>
-</nav>
+<nav class="topnav" id="topnav"></nav>
 
+<script src="gemini.js"></script>
+<script src="ui.js"></script>
 <script src="auth.js"></script>
 <script src="ai-navigator.js"></script>
+<script>UI.renderNav({ active:'himoya', user:false });</script>
 
 <div class="page">
   <div class="s-eyebrow">Qo'ng'iroq Himoyasi</div>
@@ -206,8 +200,6 @@ body { padding-top:64px; }
 </div>
 
 <script>
-const GEMINI_KEY = 'AIzaSyCgJGT--Dv104gEYZ8tY8Ed6UzS5wgEtxs';
-
 const scenarios = {
   scam: {
     num:'+998 97 328 47 61', from:'Toshkent viloyati', type:'XAVFLI',
@@ -254,20 +246,17 @@ const scenarios = {
   }
 };
 
-const bgC  = {danger:'rgba(248,113,113,0.08)', warn:'rgba(251,191,36,0.08)', safe:'rgba(52,211,153,0.08)'};
-const bdC  = {danger:'rgba(248,113,113,0.2)',  warn:'rgba(251,191,36,0.2)',  safe:'rgba(52,211,153,0.2)'};
-const txC  = {danger:'var(--danger)', warn:'var(--warn)', safe:'var(--safe)'};
-const filC = {danger:'var(--danger)', warn:'var(--warn)', safe:'var(--safe)'};
 let simHistory = [];
 
 function simulate(type) {
   const s = scenarios[type];
+  const color = UI.riskColors(s.cls);
   const ui = document.getElementById('callUI');
   ui.classList.add('show');
   ui.scrollIntoView({ behavior:'smooth', block:'center' });
 
   const av = document.getElementById('cAv');
-  av.style.cssText = `background:${bgC[s.cls]};border-color:${bdC[s.cls]}`;
+  av.style.cssText = `background:${color.bg};border-color:${color.border}`;
   av.textContent = s.icon;
   document.getElementById('cTitle').textContent = s.num;
   document.getElementById('cSub').textContent = `${s.from} · ${s.type}`;
@@ -280,29 +269,28 @@ function simulate(type) {
     bar.className = 'wave-bar';
     const h = Math.random()*35+5;
     bar.style.cssText = `height:${h}px;animation-delay:${i*0.05}s;
-      background:linear-gradient(180deg,${txC[s.cls]},${s.cls==='safe'?'var(--cyan)':'var(--p1)'})`;
+      background:linear-gradient(180deg,${color.text},${s.cls==='safe'?'var(--cyan)':'var(--p1)'})`;
     ww.appendChild(bar);
   }
 
   // Analysis
   const ab = document.getElementById('analysisBox');
-  ab.style.cssText = `background:${bgC[s.cls]};border-left-color:${txC[s.cls]}`;
+  ab.style.cssText = `background:${color.bg};border-left-color:${color.text}`;
   document.getElementById('thinkSection').innerHTML = `💭 ${s.preThink}`;
   document.getElementById('analysisText').textContent = s.analysis;
 
   const cf = document.getElementById('confFill');
-  cf.style.background = filC[s.cls];
+  cf.style.background = color.text;
   setTimeout(() => { cf.style.width = s.score + '%'; }, 100);
   document.getElementById('confPct').textContent = s.score + '%';
-  document.getElementById('confPct').style.color = txC[s.cls];
+  document.getElementById('confPct').style.color = color.text;
 
   // Actions
-  const ca = document.getElementById('callActions');
-  ca.innerHTML = s.actions.map(a =>
+  UI.renderList('callActions', s.actions, a =>
     `<button class="action-btn" style="background:${a.bg};border-color:${a.border};color:${a.color}" onclick="handleAction('${a.label}')">
       ${a.label}
     </button>`
-  ).join('');
+  );
 
   // History ga qo'shish
   simHistory.unshift({ num:s.num, type:s.type, cls:s.cls, icon:s.icon, time:'hozirgina' });
@@ -311,18 +299,12 @@ function simulate(type) {
 
 function handleAction(label) {
   // Harakat natijasini ko'rsatish
-  const toast = document.getElementById('ai-toast');
-  if (toast) {
-    toast.innerHTML = `<div style="color:var(--text)">${label} bajarildi ✓</div>`;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 3000);
-  }
+  UI.toastText(`${label} bajarildi ✓`);
 }
 
 function renderHistory() {
-  const hl = document.getElementById('histList');
   if (simHistory.length === 0) return;
-  hl.innerHTML = simHistory.slice(0,5).map(h => `
+  UI.renderList('histList', simHistory.slice(0,5), h => `
     <div class="hist-item">
       <div class="hist-ico bg-${h.cls}">${h.icon}</div>
       <div class="hist-info">
@@ -331,7 +313,7 @@ function renderHistory() {
       </div>
       <span class="hist-badge bg-${h.cls} risk-${h.cls}">${h.type}</span>
     </div>
-  `).join('');
+  `);
 }
 </script>
 </body>

@@ -78,19 +78,13 @@ body { padding-top:64px; }
 <div class="orb orb1"></div>
 <div class="orb orb2"></div>
 
-<nav class="topnav">
-  <a href="index.html" class="logo"><div class="logo-ring">⚡</div><span>SAVE</span>ONE</a>
-  <div class="nav-links">
-    <a href="index.html">Tekshirish</a>
-    <a href="dashboard.html">Dashboard</a>
-    <a href="ai-assistant.html">AI Chat</a>
-    <a href="call-protection.html">Himoya</a>
-    <a href="education.html" class="active">Ta'lim</a>
-  </div>
-</nav>
+<nav class="topnav" id="topnav"></nav>
 
+<script src="gemini.js"></script>
+<script src="ui.js"></script>
 <script src="auth.js"></script>
 <script src="ai-navigator.js"></script>
+<script>UI.renderNav({ active:'talim', user:false });</script>
 
 <div class="page">
   <div class="s-eyebrow">Ta'lim Markazi</div>
@@ -323,12 +317,7 @@ function restartQuiz() {
 }
 
 function openModule(n) {
-  const toast = document.getElementById('ai-toast');
-  if (toast) {
-    toast.innerHTML = `<div style="color:var(--text)">📚 Modul ${n} tez orada ochiladi!</div>`;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 3000);
-  }
+  UI.toastText(`📚 Modul ${n} tez orada ochiladi!`);
 }
 
 renderQ();

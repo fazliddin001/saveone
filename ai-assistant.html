@@ -157,20 +157,7 @@ body { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 <div class="orb orb1"></div>
 <div class="orb orb2"></div>
 
-<nav class="topnav">
-  <a href="index.html" class="logo"><div class="logo-ring">⚡</div><span>SAVE</span>ONE</a>
-  <div class="nav-links">
-    <a href="index.html">Tekshirish</a>
-    <a href="dashboard.html">Dashboard</a>
-    <a href="ai-assistant.html" class="active">AI Chat</a>
-    <a href="call-protection.html">Himoya</a>
-    <a href="education.html">Ta'lim</a>
-  </div>
-  <div class="nav-right">
-    <div id="navUser" style="margin-right:8px"></div>
-    <button class="clr" onclick="clearChat()">Tozalash</button>
-  </div>
-</nav>
+<nav class="topnav" id="topnav"></nav>
 
 <div class="chat-wrap">
   <!-- MODE BAR -->
@@ -219,10 +206,15 @@ body { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
   </div>
 </div>
 
+<script src="gemini.js"></script>
+<script src="ui.js"></script>
 <script src="auth.js"></script>
 <script src="ai-navigator.js"></script>
 <script>
-const GEMINI_KEY = 'AIzaSyCgJGT--Dv104gEYZ8tY8Ed6UzS5wgEtxs';
+UI.renderNav({
+  active: 'ai',
+  actions: '<button class="clr" onclick="clearChat()">Tozalash</button>',
+});
 
 // Rejimlar
 const MODES = {
@@ -271,10 +263,6 @@ function setMode(mode, btn) {
   btn.classList.add('active');
 }
 
-function getTime() {
-  return new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'});
-}
-
 function addMsg(role, text, thinkText) {
   const msgs = document.getElementById('msgs');
   const w = msgs.querySelector('.welcome'); if(w) w.remove();
@@ -297,7 +285,7 @@ function addMsg(role, text, thinkText) {
     <div>
       ${thinkHtml}
       <div class="mbub">${formatted}</div>
-      <div class="mtime">${getTime()}</div>
+      <div class="mtime">${UI.formatTime()}</div>
     </div>`;
   msgs.appendChild(d);
   msgs.scrollTop = msgs.scrollHeight;
@@ -329,87 +317,60 @@ async function send() {
   document.getElementById('sendbtn').disabled = true;
   showTyping();
 
-  try {
-    const modeConfig = MODES[currentMode];
-    const contents = history.slice(-8); // oxirgi 8 ta
+  const systemPrompt = MODES[currentMode].system;
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-thinking-exp:generateContent?key=${GEMINI_KEY}`,
-      {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          system_instruction:{ parts:[{ text: modeConfig.system }] },
-          contents,
-          generationConfig:{ temperature:0.75, maxOutputTokens:600 }
-        })
-      }
-    );
+  const { ok, raw } = await Gemini.generate({
+    model: Gemini.MODELS.thinking,
+    system: systemPrompt,
+    contents: history.slice(-8), // oxirgi 8 ta
+    temperature: 0.75,
+    maxOutputTokens: 600,
+    json: false, // thinking modeli JSON rejimini qo'llamaydi
+  });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      // Fallback: oddiy model
-      return await sendFallback(text, modeConfig.system);
-    }
-
-    const rawText = data?.candidates?.[0]?.content?.parts?.map(p=>p.text).join('') || '{}';
-    let parsed;
-    try {
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { think:'', reply: rawText, navigate:null };
-    } catch {
-      parsed = { think:'', reply: rawText, navigate:null };
-    }
-
-    history.push({ role:'model', parts:[{ text: rawText }] });
-
-    hideTyping();
-    addMsg('ai', parsed.reply || 'Tushundim!', parsed.think);
-
-    // Navigatsiya
-    if (parsed.navigate) {
-      setTimeout(() => {
-        addMsg('ai', `▶️ ${parsed.navigate} sahifasiga o'tyapman...`);
-        setTimeout(() => AINavi.navigate(parsed.navigate), 800);
-      }, 800);
-    }
-
-  } catch(e) {
-    hideTyping();
-    await sendFallback(text, MODES[currentMode].system);
+  if (ok) {
+    showAnswer(raw, 800);
+  } else {
+    await sendFallback(systemPrompt);
   }
 
   document.getElementById('sendbtn').disabled = false;
 }
 
 // Fallback: gemini-2.0-flash (thinking modeli ishlamasa)
-async function sendFallback(text, systemPrompt) {
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          system_instruction:{ parts:[{ text: systemPrompt }] },
-          contents: history.slice(-6),
-          generationConfig:{ temperature:0.7, maxOutputTokens:500, responseMimeType:'application/json' }
-        })
-      }
-    );
-    const data = await res.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    let parsed;
-    try { parsed = JSON.parse(rawText); }
-    catch { parsed = { think:'', reply: rawText }; }
-    history.push({ role:'model', parts:[{ text: rawText }] });
-    hideTyping();
-    addMsg('ai', parsed.reply || 'Tushundim!', parsed.think);
-    if (parsed.navigate) setTimeout(() => AINavi.navigate(parsed.navigate), 1000);
-  } catch(e) {
+async function sendFallback(systemPrompt) {
+  const { ok, raw } = await Gemini.generate({
+    system: systemPrompt,
+    contents: history.slice(-6),
+    temperature: 0.7,
+    maxOutputTokens: 500,
+  });
+
+  if (!ok) {
     hideTyping();
     addMsg('ai','❌ Ulanish muammosi. Internetni tekshiring yoki biroz keyin urinib ko\'ring.');
+    return;
+  }
+
+  showAnswer(raw, 1000);
+}
+
+// AI javobini ko'rsatish va kerak bo'lsa navigatsiya qilish
+function showAnswer(raw, navigateDelay) {
+  const rawText = raw || '{}';
+  const parsed = Gemini.parseJSON(rawText, { think:'', reply: rawText, navigate:null });
+
+  history.push({ role:'model', parts:[{ text: rawText }] });
+
+  hideTyping();
+  addMsg('ai', parsed.reply || 'Tushundim!', parsed.think);
+
+  // Navigatsiya
+  if (parsed.navigate) {
+    setTimeout(() => {
+      addMsg('ai', `▶️ ${parsed.navigate} sahifasiga o'tyapman...`);
+      setTimeout(() => AINavi.navigate(parsed.navigate), navigateDelay);
+    }, navigateDelay);
   }
 }
 
