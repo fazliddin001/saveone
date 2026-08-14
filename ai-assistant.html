@@ -317,6 +317,16 @@ function showTyping() {
 }
 function hideTyping() { const t=document.getElementById('typing'); if(t) t.remove(); }
 
+// AI navigator yuklanmagan bo'lsa jimgina yo'qolib ketmasligi kerak
+function navigateSafe(page) {
+  if (typeof AINavi === 'undefined') {
+    console.error('SAVEONE: AINavi yuklanmagan — navigatsiya bajarilmadi:', page);
+    addMsg('ai', '❌ Sahifaga o\'tish imkoni bo\'lmadi. Sahifani yangilang.');
+    return;
+  }
+  AINavi.navigate(page);
+}
+
 async function send() {
   const inp = document.getElementById('msgin');
   const text = inp.value.trim();
@@ -346,19 +356,33 @@ async function send() {
       }
     );
 
-    const data = await res.json();
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      console.error('SAVEONE: API javobi JSON emas:', parseErr);
+    }
 
-    if (!res.ok) {
+    if (!res.ok || !data) {
       // Fallback: oddiy model
+      console.warn('SAVEONE: thinking modeli ishlamadi, fallback ishga tushdi:',
+        data?.error?.message || `HTTP ${res.status}`);
       return await sendFallback(text, modeConfig.system);
     }
 
-    const rawText = data?.candidates?.[0]?.content?.parts?.map(p=>p.text).join('') || '{}';
+    const rawText = data?.candidates?.[0]?.content?.parts?.map(p => p.text).filter(Boolean).join('');
+    if (!rawText) {
+      const reason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
+      console.warn('SAVEONE: bo\'sh javob, fallback ishga tushdi:', reason || 'sababi noma\'lum');
+      return await sendFallback(text, modeConfig.system);
+    }
+
     let parsed;
     try {
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { think:'', reply: rawText, navigate:null };
-    } catch {
+    } catch (parseErr) {
+      console.warn('SAVEONE: model javobi JSON emas, matn sifatida ishlatiladi:', parseErr.message);
       parsed = { think:'', reply: rawText, navigate:null };
     }
 
@@ -371,16 +395,18 @@ async function send() {
     if (parsed.navigate) {
       setTimeout(() => {
         addMsg('ai', `▶️ ${parsed.navigate} sahifasiga o'tyapman...`);
-        setTimeout(() => AINavi.navigate(parsed.navigate), 800);
+        setTimeout(() => navigateSafe(parsed.navigate), 800);
       }, 800);
     }
 
   } catch(e) {
+    console.error('SAVEONE: AI so\'rovi xatosi:', e);
     hideTyping();
     await sendFallback(text, MODES[currentMode].system);
+  } finally {
+    hideTyping();
+    document.getElementById('sendbtn').disabled = false;
   }
-
-  document.getElementById('sendbtn').disabled = false;
 }
 
 // Fallback: gemini-2.0-flash (thinking modeli ishlamasa)
@@ -398,18 +424,35 @@ async function sendFallback(text, systemPrompt) {
         })
       }
     );
-    const data = await res.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      throw new Error(`API javobi JSON emas: ${parseErr.message}`);
+    }
+
+    if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      const reason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
+      throw new Error(reason ? `Javob olinmadi (${reason})` : 'API bo\'sh javob qaytardi');
+    }
+
     let parsed;
     try { parsed = JSON.parse(rawText); }
-    catch { parsed = { think:'', reply: rawText }; }
+    catch (parseErr) {
+      console.warn('SAVEONE: fallback javobi JSON emas, matn sifatida ishlatiladi:', parseErr.message);
+      parsed = { think:'', reply: rawText };
+    }
     history.push({ role:'model', parts:[{ text: rawText }] });
     hideTyping();
     addMsg('ai', parsed.reply || 'Tushundim!', parsed.think);
-    if (parsed.navigate) setTimeout(() => AINavi.navigate(parsed.navigate), 1000);
+    if (parsed.navigate) setTimeout(() => navigateSafe(parsed.navigate), 1000);
   } catch(e) {
+    console.error('SAVEONE: fallback so\'rovi xatosi:', e);
     hideTyping();
-    addMsg('ai','❌ Ulanish muammosi. Internetni tekshiring yoki biroz keyin urinib ko\'ring.');
+    addMsg('ai', `❌ So'rov bajarilmadi (${e.message}). Internetni tekshiring yoki biroz keyin urinib ko'ring.`);
   }
 }
 
